@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useDrop } from 'react-dnd'
 import { Clock, Plus, X } from 'lucide-react'
+import { WeatherAnimation, getWeatherForTimeSlot, getDayWeather } from '../animations/WeatherAnimations'
+import { DayNightBackground, getDayNightTheme, getDayNightColors } from '../animations/DayNightTheme'
 // import { Activity } from '../../types/activity'
 
 interface Activity {
@@ -56,31 +58,41 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
   })
 
 
+  const weather = getWeatherForTimeSlot(timeSlot.label, day)
+  const dayNightPeriod = getDayNightTheme(timeSlot.label)
+  const dayNightColors = getDayNightColors(dayNightPeriod, theme)
+
   return (
     <div
       ref={drop}
-      className="relative min-h-[80px] p-4 rounded-xl transition-all duration-300 backdrop-blur-sm"
+      className="relative min-h-[80px] p-4 rounded-xl transition-all duration-300 backdrop-blur-sm overflow-hidden"
       style={{
         background: isOver 
           ? `linear-gradient(135deg, var(--color-accent, ${theme.colors.accent})15, var(--color-accent, ${theme.colors.accent})25)`
           : activity
-            ? `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})95, var(--color-primary, ${theme.colors.primary})10)`
-            : `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})80, var(--color-surface, ${theme.colors.surface})95)`,
+            ? dayNightColors.background
+            : `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})80, ${dayNightColors.overlay})`,
         border: `2px ${activity ? 'solid' : 'dashed'} ${isOver 
           ? `var(--color-accent, ${theme.colors.accent})` 
           : activity 
-            ? `var(--color-primary, ${theme.colors.primary})` 
+            ? dayNightColors.border
             : `var(--color-border, ${theme.colors.border})`}`,
         boxShadow: activity 
-          ? `0 8px 32px var(--color-primary, ${theme.colors.primary})20, 0 4px 16px var(--color-primary, ${theme.colors.primary})10`
+          ? dayNightColors.shadow
           : isOver
             ? `0 8px 32px var(--color-accent, ${theme.colors.accent})30`
             : '0 2px 8px rgba(0,0,0,0.05)',
         transform: isOver ? 'scale(1.02)' : 'scale(1)'
       }}
     >
+      {/* Day/Night Background Animation */}
+      <DayNightBackground timeSlot={timeSlot.label} className="opacity-40" />
+      
+      {/* Weather Animation */}
+      <WeatherAnimation weather={weather} className="opacity-60" />
+      
       {/* Time Label */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 relative z-10">
         <Clock className="w-4 h-4" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }} />
         <span className="text-sm font-medium" style={{ color: `var(--color-text, ${theme.colors.text})` }}>{timeSlot.label}</span>
       </div>
@@ -199,27 +211,40 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
       <div className="grid gap-6">
         {activeDays.map((day) => (
           <div key={day} className="space-y-4">
-            {/* Day Header */}
-            <div className="flex items-center gap-4 p-4 rounded-xl backdrop-blur-sm" style={{
+            {/* Day Header with Weather Animation */}
+            <div className="relative flex items-center gap-4 p-4 rounded-xl backdrop-blur-sm overflow-hidden" style={{
               background: `linear-gradient(135deg, var(--color-surface, ${currentTheme.colors.surface})90, var(--color-primary, ${currentTheme.colors.primary})10)`,
               border: `1px solid var(--color-border, ${currentTheme.colors.border})`,
               boxShadow: `0 4px 16px var(--color-primary, ${currentTheme.colors.primary})10`
             }}>
+              {/* Day-level Weather Animation */}
+              <WeatherAnimation weather={getDayWeather(day)} className="opacity-30" />
+              
               <div
-                className="w-6 h-6 rounded-full shadow-lg"
+                className="w-6 h-6 rounded-full shadow-lg relative z-10"
                 style={{ 
                   background: `linear-gradient(135deg, var(--color-primary, ${currentTheme.colors.primary}), var(--color-secondary, ${currentTheme.colors.secondary}))`,
                   boxShadow: `0 4px 12px var(--color-primary, ${currentTheme.colors.primary})40`
                 }}
               />
-              <h3 className="text-xl font-bold capitalize" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
+              <h3 className="text-xl font-bold capitalize relative z-10" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
                 {day}
               </h3>
-              <div className="px-3 py-1 rounded-full text-sm font-medium" style={{ 
+              <div className="px-3 py-1 rounded-full text-sm font-medium relative z-10" style={{ 
                 background: `var(--color-accent, ${currentTheme.colors.accent})20`,
                 color: `var(--color-accent, ${currentTheme.colors.accent})`
               }}>
                 {scheduledActivities?.filter(a => a.day === day).length || 0} activities
+              </div>
+              
+              {/* Weather indicator */}
+              <div className="ml-auto flex items-center gap-2 relative z-10">
+                <span className="text-sm font-medium" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
+                  {getDayWeather(day) === 'sunny' && '☀️ Sunny'}
+                  {getDayWeather(day) === 'rainy' && '🌧️ Rainy'}
+                  {getDayWeather(day) === 'snowy' && '❄️ Snowy'}
+                  {getDayWeather(day) === 'cloudy' && '☁️ Cloudy'}
+                </span>
               </div>
             </div>
 

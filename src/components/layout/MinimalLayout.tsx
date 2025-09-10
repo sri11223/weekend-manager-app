@@ -8,6 +8,7 @@ import EnhancedWeekendTimeline from '../features/EnhancedWeekendTimeline'
 import FloatingActivityBrowser from '../features/FloatingActivityBrowser'
 import ThemeSelector from '../features/ThemeSelector'
 import LongWeekendPlanner from '../features/LongWeekendPlanner'
+import PlanSummary from '../features/PlanSummary'
 import { useTheme } from '../../hooks/useTheme'
 // import CommunityPanel from '../features/CommunityPanel'
 // import BudgetTracker from '../features/BudgetTracker'
@@ -179,7 +180,7 @@ export const MinimalLayout: React.FC = () => {
 
       {/* Main Content */}
       <div 
-        className="flex-1 flex flex-col min-h-0"
+        className="flex-1 flex min-h-0"
         style={{ 
           backgroundColor: `var(--color-background, ${currentTheme.colors.background})`,
           color: `var(--color-text, ${currentTheme.colors.text})`
@@ -203,6 +204,17 @@ export const MinimalLayout: React.FC = () => {
             }}
             selectedDays={selectedDays}
           />
+        </div>
+
+        {/* Right Sidebar - Plan Summary */}
+        <div 
+          className="w-80 border-l p-6 overflow-y-auto"
+          style={{ 
+            backgroundColor: `var(--color-surface, ${currentTheme.colors.surface})`,
+            borderColor: `var(--color-border, ${currentTheme.colors.border})`
+          }}
+        >
+          <PlanSummary scheduledActivities={scheduledActivities} />
         </div>
       </div>
 
