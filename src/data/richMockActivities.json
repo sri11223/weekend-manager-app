@@ -3,7 +3,7 @@
       {
         "id": "movie-1",
         "title": "Avatar: The Way of Water",
-        "category": "Movies & Shows",
+        "category": "entertainment",
         "duration": 195,
         "cost": 15,
         "weatherPreference": "indoor",
@@ -24,7 +24,7 @@
       {
         "id": "movie-2",
         "title": "Everything Everywhere All at Once",
-        "category": "Movies & Shows",
+        "category": "entertainment",
         "duration": 139,
         "cost": 15,
         "weatherPreference": "indoor",
@@ -45,7 +45,7 @@
       {
         "id": "movie-3",
         "title": "The Quiet Place",
-        "category": "Movies & Shows", 
+        "category": "entertainment", 
         "duration": 90,
         "cost": 12,
         "weatherPreference": "indoor",
@@ -68,7 +68,7 @@
       {
         "id": "game-1",
         "title": "Stardew Valley",
-        "category": "Gaming",
+        "category": "entertainment",
         "duration": 180,
         "cost": 0,
         "weatherPreference": "indoor",
@@ -89,7 +89,7 @@
       {
         "id": "game-2",
         "title": "Rocket League",
-        "category": "Gaming",
+        "category": "entertainment",
         "duration": 90,
         "cost": 0,
         "weatherPreference": "indoor", 
@@ -110,7 +110,7 @@
       {
         "id": "game-3",
         "title": "Chess.com",
-        "category": "Gaming",
+        "category": "entertainment",
         "duration": 60,
         "cost": 0,
         "weatherPreference": "any",
@@ -133,7 +133,7 @@
       {
         "id": "outdoor-1",
         "title": "Sunset Hiking at Eagle Peak",
-        "category": "Outdoor Fun",
+        "category": "outdoor",
         "duration": 240,
         "cost": 5,
         "weatherPreference": "sunny",
@@ -154,7 +154,7 @@
       {
         "id": "outdoor-2",
         "title": "Beach Volleyball Tournament",
-        "category": "Outdoor Fun",
+        "category": "outdoor",
         "duration": 120,
         "cost": 0,
         "weatherPreference": "sunny",
@@ -175,7 +175,7 @@
       {
         "id": "outdoor-3",
         "title": "Botanical Garden Photography Walk",
-        "category": "Outdoor Fun",
+        "category": "outdoor",
         "duration": 150,
         "cost": 8,
         "weatherPreference": "partly_cloudy",
@@ -197,7 +197,7 @@
       {
         "id": "food-1",
         "title": "Weekend Bottomless Brunch",
-        "category": "Food & Dining",
+        "category": "food",
         "duration": 120,
         "cost": 35,
         "weatherPreference": "any",
@@ -218,7 +218,7 @@
       {
         "id": "food-2",
         "title": "Night Market Food Adventure",
-        "category": "Food & Dining",
+        "category": "food",
         "duration": 180,
         "cost": 25,
         "weatherPreference": "outdoor",
@@ -239,7 +239,7 @@
       {
         "id": "food-3",
         "title": "Cozy Coffee Shop Reading",
-        "category": "Food & Dining",
+        "category": "food",
         "duration": 90,
         "cost": 8,
         "weatherPreference": "any",
@@ -262,7 +262,7 @@
       {
         "id": "event-1",
         "title": "Saturday Night Jazz Festival",
-        "category": "Events & Culture",
+        "category": "culture",
         "duration": 240,
         "cost": 15,
         "weatherPreference": "outdoor",
@@ -284,7 +284,7 @@
       {
         "id": "event-2",
         "title": "Interactive Art Exhibition",
-        "category": "Events & Culture",
+        "category": "culture",
         "duration": 120,
         "cost": 12,
         "weatherPreference": "indoor",
@@ -305,7 +305,7 @@
       {
         "id": "event-3",
         "title": "Weekend Farmers Market",
-        "category": "Events & Culture",
+        "category": "culture",
         "duration": 90,
         "cost": 0,
         "weatherPreference": "outdoor",
@@ -329,7 +329,7 @@
       {
         "id": "social-1",
         "title": "Board Game Cafe Tournament",
-        "category": "Social & Games",
+        "category": "social",
         "duration": 180,
         "cost": 12,
         "weatherPreference": "indoor",
@@ -351,7 +351,7 @@
       {
         "id": "wellness-1",
         "title": "Sunrise Yoga in the Park",
-        "category": "Wellness & Fitness",
+        "category": "wellness",
         "duration": 75,
         "cost": 15,
         "weatherPreference": "sunny",

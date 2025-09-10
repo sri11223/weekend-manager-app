@@ -1,20 +1,24 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
-import { WeekendTimeline } from '../features/WeekendTimeline'
+import WeekendTimeline from '../features/WeekendTimeline'
 import { WeekendSummary } from '../features/WeekendSummary'
+import GoogleCalendarIntegration from '../features/GoogleCalendarIntegration'
+import ShareExportPanel from '../features/ShareExportPanel'
+import { AnimatePresence } from 'framer-motion'
 
 export const AppLayout: React.FC = () => {
+  const [showCalendarIntegration, setShowCalendarIntegration] = useState(false)
+  const [showSharePanel, setShowSharePanel] = useState(false)
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
-      {/* Subtle Background Pattern */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-24 h-24 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-pulse" style={{animationDelay: '3s'}}></div>
-      </div>
+    <div className="min-h-screen bg-white relative overflow-hidden">
       
       {/* Header */}
-      <Header />
+      <Header 
+        onCalendarClick={() => setShowCalendarIntegration(true)}
+        onShareClick={() => setShowSharePanel(true)}
+      />
       
       {/* Main Layout */}
       <div className="flex h-[calc(100vh-80px)]">
@@ -36,6 +40,21 @@ export const AppLayout: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* Modal Overlays */}
+      <AnimatePresence>
+        {showCalendarIntegration && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <GoogleCalendarIntegration onClose={() => setShowCalendarIntegration(false)} />
+          </div>
+        )}
+        
+        {showSharePanel && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <ShareExportPanel onClose={() => setShowSharePanel(false)} />
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

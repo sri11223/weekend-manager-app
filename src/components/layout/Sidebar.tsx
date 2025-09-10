@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Plus, Hash, Filter } from 'lucide-react'
-import { format, addDays, startOfWeek } from 'date-fns'
-import { DraggableActivityCard, Activity } from '../features/DraggableActivityCard'
+import { Search, Hash } from 'lucide-react'
+import { startOfWeek, addDays, format } from 'date-fns'
+import DraggableActivityCard, { Activity } from '../features/DraggableActivityCard'
+import WeekendThemeSelector from '../features/WeekendThemeSelector'
+import MoodVibeTracker from '../features/MoodVibeTracker'
+import { useWeekendTheme } from '../../hooks/useWeekendTheme'
 import { enhancedMockService } from '../../services/enhancedMockService'
+import { apiIntegrationService } from '../../services/apiIntegrationService'
 
 interface SidebarChannel {
   id: string
@@ -13,17 +17,14 @@ interface SidebarChannel {
   color?: string
 }
 
-const SIDEBAR_CHANNELS: SidebarChannel[] = [
-  { id: 'all', name: 'all', icon: <Hash className="w-4 h-4" />, count: 45, type: 'channel' },
-  { id: 'weekend', name: 'weekend', icon: <Hash className="w-4 h-4" />, count: 25, type: 'channel' },
-  { id: 'family', name: 'family', icon: <Hash className="w-4 h-4" />, count: 12, type: 'channel' },
-]
 
 const ACTIVITY_CATEGORIES: SidebarChannel[] = [
-  { id: 'movies', name: 'Movies & Shows', icon: <Hash className="w-4 h-4" />, count: 15, type: 'category', color: '#6366f1' },
+  { id: 'entertainment', name: 'Movies & Shows', icon: <Hash className="w-4 h-4" />, count: 15, type: 'category', color: '#6366f1' },
   { id: 'food', name: 'Food & Dining', icon: <Hash className="w-4 h-4" />, count: 25, type: 'category', color: '#ec4899' },
   { id: 'outdoor', name: 'Outdoor Fun', icon: <Hash className="w-4 h-4" />, count: 18, type: 'category', color: '#10b981' },
-  { id: 'events', name: 'Events & Culture', icon: <Hash className="w-4 h-4" />, count: 12, type: 'category', color: '#f59e0b' },
+  { id: 'culture', name: 'Events & Culture', icon: <Hash className="w-4 h-4" />, count: 12, type: 'category', color: '#f59e0b' },
+  { id: 'social', name: 'Social & Games', icon: <Hash className="w-4 h-4" />, count: 8, type: 'category', color: '#8b5cf6' },
+  { id: 'wellness', name: 'Wellness & Fitness', icon: <Hash className="w-4 h-4" />, count: 5, type: 'category', color: '#06b6d4' },
 ]
 
 export const Sidebar: React.FC = () => {
@@ -31,6 +32,10 @@ export const Sidebar: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedVibes, setSelectedVibes] = useState<string[]>([])
+  
+  // Weekend theme state
+  const { selectedTheme, setTheme, clearTheme } = useWeekendTheme()
   
   // Get current weekend dates
   const today = new Date()
@@ -41,22 +46,51 @@ export const Sidebar: React.FC = () => {
   // Load activities
   useEffect(() => {
     loadActivities()
-  }, [selectedCategory, searchQuery])
+  }, [selectedCategory, searchQuery, selectedTheme, selectedVibes])
 
   const loadActivities = async () => {
     try {
       setLoading(true)
       let result: Activity[] = []
+      let apiActivities: Activity[] = []
 
-      if (searchQuery.trim()) {
-        result = await enhancedMockService.advancedSearch({ query: searchQuery })
-      } else if (selectedCategory === 'all') {
-        result = await enhancedMockService.getAllActivities()
-      } else {
-        result = await enhancedMockService.getActivitiesByCategory(selectedCategory)
+      // Get API activities based on theme or category
+      if (selectedTheme) {
+        apiActivities = await apiIntegrationService.getActivitiesByTheme(selectedTheme.id, 10)
+      } else if (selectedCategory !== 'all') {
+        apiActivities = await apiIntegrationService.getActivitiesByCategory(selectedCategory, 8)
       }
 
-      setActivities(result.slice(0, 20)) // Limit to 20 activities
+      // Get mock activities
+      if (searchQuery.trim()) {
+        const allMockActivities = await enhancedMockService.getAllActivities()
+        result = allMockActivities.filter(activity => 
+          activity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          activity.description.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        const searchApiActivities = await apiIntegrationService.searchActivities(searchQuery, 5)
+        result = [...result, ...searchApiActivities]
+      } else if (selectedCategory !== 'all') {
+        result = await enhancedMockService.getActivitiesByCategory(selectedCategory)
+      } else {
+        result = await enhancedMockService.getAllActivities()
+      }
+
+      // Combine and deduplicate activities
+      const combinedActivities = [...result, ...apiActivities]
+      const uniqueActivities = combinedActivities.filter((activity, index, self) => 
+        index === self.findIndex(a => a.id === activity.id)
+      )
+
+      // Apply vibe filtering to final results
+      const filteredByVibes = uniqueActivities.filter(activity => {
+        if (selectedVibes.length === 0) return true
+        return selectedVibes.some(vibe => 
+          activity.moodTags?.some(tag => tag.toLowerCase().includes(vibe.toLowerCase()))
+        )
+      })
+
+      setActivities(filteredByVibes.slice(0, 25))
     } catch (error) {
       console.error('Failed to load activities:', error)
     } finally {
@@ -69,133 +103,139 @@ export const Sidebar: React.FC = () => {
     setSearchQuery('')
   }
 
+  // Update category counts dynamically
+  const updateCategoryCounts = (allActivities: Activity[]) => {
+    return ACTIVITY_CATEGORIES.map(category => ({
+      ...category,
+      count: allActivities.filter(activity => activity.category === category.id).length
+    }))
+  }
+
+  const categoriesWithCounts = updateCategoryCounts(activities)
+
   return (
-    <aside className="w-80 bg-white/25 backdrop-blur-xl border-r border-white/20 flex flex-col shadow-lg">
-      {/* Mini Calendar */}
-      <div className="p-6 border-b border-white/20">
-        <div className="bg-gradient-to-br from-blue-50/80 to-purple-50/80 backdrop-blur-sm rounded-2xl p-5 border border-white/30">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">This Weekend</div>
-          <div className="text-xl font-bold text-gray-900 mb-1">
-            {format(saturday, 'MMM d')} - {format(sunday, 'd, yyyy')}
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-blue-600 font-medium">{format(saturday, 'EEEE')}</span>
-            <span className="text-purple-600 font-medium">{format(sunday, 'EEEE')}</span>
-          </div>
+    <aside className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
+      {/* Clean Header */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="text-sm font-medium text-gray-500 mb-1">This Weekend</div>
+        <div className="text-lg font-semibold text-gray-900 mb-2">
+          {format(saturday, 'MMM d')} - {format(sunday, 'd, yyyy')}
+        </div>
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <span>{format(saturday, 'EEEE')}</span>
+          <span>{format(sunday, 'EEEE')}</span>
         </div>
       </div>
 
-      {/* Enhanced Search Bar */}
-      <div className="p-4 border-b border-white/20">
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      {/* Search Bar - Move to top */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Search activities, movies, games..."
+            placeholder="Search activities..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white/60 backdrop-blur-sm border border-white/40 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-300 transition-all text-sm font-medium"
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
           />
-        </div>
-        
-        {/* Quick Stats */}
-        <div className="text-xs text-gray-600 text-center">
-          {activities.length} activities available
         </div>
       </div>
 
-      {/* Enhanced Categories Filter */}
-      <div className="p-4 border-b border-white/20">
-        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Filter className="w-4 h-4" />
-          Browse Categories
-        </h3>
-        <div className="space-y-2">
+      {/* Compact Categories */}
+      <div className="p-3 border-b border-gray-200">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleCategoryChange('all')}
-            className={`w-full p-3 rounded-xl text-sm font-medium transition-all flex items-center justify-between ${
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
               selectedCategory === 'all'
-                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
-                : 'bg-white/50 text-gray-700 hover:bg-white/70 hover:shadow-md'
+                ? 'bg-blue-500 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            <span>🎯 All Activities</span>
-            <span className="text-xs opacity-75">{activities.length}</span>
+            All ({activities.length})
           </button>
-          {ACTIVITY_CATEGORIES.map((category) => {
-            const categoryCount = activities.filter(a => a.category.toLowerCase().includes(category.id)).length;
-            const emoji = {
-              'movies': '🎬',
-              'food': '🍽️', 
-              'outdoor': '🌲',
-              'events': '🎭'
-            }[category.id] || '📋';
-            
-            return (
-              <button
-                key={category.id}
-                onClick={() => handleCategoryChange(category.id)}
-                className={`w-full p-3 rounded-xl text-sm font-medium transition-all flex items-center justify-between ${
-                  selectedCategory === category.id
-                    ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
-                    : 'bg-white/50 text-gray-700 hover:bg-white/70 hover:shadow-md'
-                }`}
-              >
-                <span>{emoji} {category.name}</span>
-                <span className="text-xs opacity-75">{categoryCount}</span>
-              </button>
-            );
-          })}
+          {categoriesWithCounts.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => handleCategoryChange(category.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                selectedCategory === category.id
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {category.name} ({category.count})
+            </button>
+          ))}
         </div>
+      </div>
+
+      {/* Weekend Theme Selector */}
+      <div className="p-4 border-b border-gray-200">
+        <WeekendThemeSelector 
+          selectedTheme={selectedTheme}
+          onThemeSelect={setTheme}
+          onThemeClear={clearTheme}
+        />
+      </div>
+
+      {/* Mood/Vibe Tracker */}
+      <div className="p-4 border-b border-gray-200">
+        <MoodVibeTracker 
+          selectedVibes={selectedVibes}
+          onVibesChange={setSelectedVibes}
+        />
       </div>
 
       {/* Activities List */}
-      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-        <div className="flex items-center justify-between mb-4 sticky top-0 bg-white/80 backdrop-blur-sm rounded-lg p-2 z-10">
-          <h3 className="text-sm font-bold text-gray-800">
-            {searchQuery ? `🔍 Search Results` : 
-             selectedCategory === 'all' ? '🎯 All Activities' : 
-             `${ACTIVITY_CATEGORIES.find(c => c.id === selectedCategory)?.name || 'Activities'}`}
-          </h3>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-              {activities.length}
-            </span>
-            {loading && (
-              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            )}
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white/30 rounded-xl p-3 animate-pulse">
-                <div className="bg-gray-300 h-24 rounded-lg mb-2"></div>
-                <div className="bg-gray-300 h-3 rounded mb-1"></div>
-                <div className="bg-gray-300 h-2 rounded w-2/3"></div>
-              </div>
-            ))}
-          </div>
-        ) : activities.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="w-8 h-8 text-gray-400" />
+      <div className="flex-1 overflow-y-auto bg-gray-50">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-900">
+              {searchQuery ? `Search Results` : 
+               selectedCategory === 'all' ? 'All Activities' : 
+               `${ACTIVITY_CATEGORIES.find(c => c.id === selectedCategory)?.name || 'Activities'}`}
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-md border">
+                {activities.length}
+              </span>
+              {loading && (
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              )}
             </div>
-            <p className="text-sm font-medium mb-1">No activities found</p>
-            <p className="text-xs text-gray-400">Try a different search term or category</p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {activities.map((activity, index) => (
-              <DraggableActivityCard
-                key={activity.id}
-                activity={activity}
-                index={index}
-              />
-            ))}
-          </div>
-        )}
+
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-lg p-3 animate-pulse border">
+                  <div className="bg-gray-200 h-16 rounded mb-2"></div>
+                  <div className="bg-gray-200 h-3 rounded mb-1"></div>
+                  <div className="bg-gray-200 h-2 rounded w-2/3"></div>
+                </div>
+              ))}
+            </div>
+          ) : activities.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <Search className="w-6 h-6 text-gray-400" />
+              </div>
+              <p className="text-sm font-medium mb-1">No activities found</p>
+              <p className="text-xs text-gray-400">Try adjusting your search</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {activities.map((activity, index) => (
+                <DraggableActivityCard
+                  key={activity.id}
+                  activity={activity}
+                  index={index}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   )
