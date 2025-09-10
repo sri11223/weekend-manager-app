@@ -1,0 +1,153 @@
+{
+    "movies": [
+      {
+        "id": "movie-1",
+        "title": "Avatar: The Way of Water",
+        "category": "Movies & Shows",
+        "duration": 195,
+        "cost": 15,
+        "weatherPreference": "indoor",
+        "description": "Jake Sully lives with his newfound family formed on the planet of Pandora.",
+        "image": "https://via.placeholder.com/300x450/1e40af/white?text=Avatar+2",
+        "rating": 8.1,
+        "genre": "Sci-Fi",
+        "showTimes": ["2:00 PM", "5:30 PM", "8:00 PM"],
+        "theater": "AMC Downtown"
+      },
+      {
+        "id": "movie-2", 
+        "title": "Top Gun: Maverick",
+        "category": "Movies & Shows",
+        "duration": 130,
+        "cost": 15,
+        "weatherPreference": "indoor",
+        "description": "After thirty years, Maverick is still pushing the envelope as a top naval aviator.",
+        "image": "https://via.placeholder.com/300x450/dc2626/white?text=Top+Gun",
+        "rating": 8.3,
+        "genre": "Action",
+        "showTimes": ["1:30 PM", "4:00 PM", "7:30 PM"],
+        "theater": "Cinemark Theater"
+      }
+    ],
+    "games": [
+      {
+        "id": "game-1",
+        "title": "Fortnite Battle Royale",
+        "category": "Gaming",
+        "duration": 120,
+        "cost": 0,
+        "weatherPreference": "indoor",
+        "description": "100 players compete to be the last one standing in this battle royale.",
+        "image": "https://via.placeholder.com/300x200/8b5cf6/white?text=Fortnite",
+        "platform": "PC, Console, Mobile",
+        "genre": "Battle Royale",
+        "players": "1-4",
+        "difficulty": "Easy"
+      },
+      {
+        "id": "game-2",
+        "title": "League of Legends",
+        "category": "Gaming", 
+        "duration": 180,
+        "cost": 0,
+        "weatherPreference": "indoor",
+        "description": "Strategic team-based gameplay in the world's most popular MOBA.",
+        "image": "https://via.placeholder.com/300x200/10b981/white?text=LoL",
+        "platform": "PC",
+        "genre": "MOBA",
+        "players": "5v5",
+        "difficulty": "Hard"
+      }
+    ],
+    "events": [
+      {
+        "id": "event-1",
+        "title": "Jazz in the Park",
+        "category": "Events & Culture",
+        "duration": 180,
+        "cost": 0,
+        "weatherPreference": "outdoor",
+        "description": "Free outdoor jazz concert featuring local musicians.",
+        "image": "https://via.placeholder.com/300x200/f59e0b/white?text=Jazz+Concert",
+        "venue": "Central Park Amphitheater",
+        "date": "Saturday",
+        "time": "7:00 PM",
+        "ticketsRequired": false
+      },
+      {
+        "id": "event-2",
+        "title": "Art Museum Exhibition",
+        "category": "Events & Culture",
+        "duration": 120,
+        "cost": 12,
+        "weatherPreference": "indoor",
+        "description": "Contemporary art exhibition featuring emerging local artists.",
+        "image": "https://via.placeholder.com/300x200/ec4899/white?text=Art+Museum",
+        "venue": "Modern Art Museum",
+        "date": "Weekend",
+        "time": "10:00 AM - 6:00 PM",
+        "ticketsRequired": true
+      }
+    ],
+    "outdoor": [
+      {
+        "id": "outdoor-1",
+        "title": "Hiking at Eagle Peak",
+        "category": "Outdoor Fun",
+        "duration": 240,
+        "cost": 5,
+        "weatherPreference": "sunny",
+        "description": "Scenic 4-mile hike with breathtaking views of the valley.",
+        "image": "https://via.placeholder.com/300x200/059669/white?text=Hiking",
+        "difficulty": "Moderate",
+        "equipment": "Hiking boots, water bottle",
+        "location": "Eagle Peak Trailhead",
+        "distance": "4 miles"
+      },
+      {
+        "id": "outdoor-2",
+        "title": "Beach Volleyball",
+        "category": "Outdoor Fun", 
+        "duration": 120,
+        "cost": 0,
+        "weatherPreference": "sunny",
+        "description": "Join pickup volleyball games at the beach courts.",
+        "image": "https://via.placeholder.com/300x200/0ea5e9/white?text=Volleyball",
+        "difficulty": "Easy",
+        "equipment": "Sunscreen, water",
+        "location": "Santa Monica Beach",
+        "players": "2-8"
+      }
+    ],
+    "food": [
+      {
+        "id": "food-1",
+        "title": "Weekend Brunch",
+        "category": "Food & Dining",
+        "duration": 90,
+        "cost": 25,
+        "weatherPreference": "any",
+        "description": "Bottomless brunch with mimosas and live music.",
+        "image": "https://via.placeholder.com/300x200/f97316/white?text=Brunch",
+        "cuisine": "American",
+        "restaurant": "The Breakfast Club",
+        "rating": 4.5,
+        "reservation": "Recommended"
+      },
+      {
+        "id": "food-2",
+        "title": "Food Truck Festival",
+        "category": "Food & Dining",
+        "duration": 150,
+        "cost": 20,
+        "weatherPreference": "outdoor",
+        "description": "Variety of gourmet food trucks with live entertainment.",
+        "image": "https://via.placeholder.com/300x200/db2777/white?text=Food+Trucks",
+        "cuisine": "Various",
+        "location": "Downtown Plaza",
+        "time": "11:00 AM - 8:00 PM",
+        "reservation": "None needed"
+      }
+    ]
+  }
+  
