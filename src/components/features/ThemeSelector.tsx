@@ -8,22 +8,20 @@ interface ThemeSelectorProps {
   onClose?: () => void
 }
 
-const ThemeSelector: React.FC<ThemeSelectorProps> = ({ onClose }) => {
-  const { currentTheme, changeTheme, availableThemes } = useTheme()
+const ThemeSelector: React.FC = () => {
+  const { currentTheme, changeTheme, availableThemes, forceRender } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
 
   const handleThemeChange = (themeId: string) => {
     changeTheme(themeId)
     setIsOpen(false)
-    if (onClose) onClose()
   }
 
   return (
-    <div className="relative">
+    <div key={`theme-selector-${forceRender}`} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors hover:bg-gray-100"
-        style={{ color: currentTheme.colors.text }}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors hover:bg-white/20 text-white"
       >
         <Palette className="w-5 h-5" />
         <span className="hidden md:inline">Theme</span>

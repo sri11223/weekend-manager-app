@@ -1,7 +1,17 @@
 import React, { useState } from 'react'
 import { useDrop } from 'react-dnd'
 import { Clock, Plus, X } from 'lucide-react'
-import { Activity } from '../../types/activity'
+// import { Activity } from '../../types/activity'
+
+interface Activity {
+  id: string
+  title: string
+  description: string
+  duration: number
+  category: string
+  image?: string
+  cost?: number
+}
 import { TIME_SLOTS, TimeSlot } from '../../types/theme'
 import { useTheme } from '../../hooks/useTheme'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -45,39 +55,34 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
     })
   })
 
-  const getPeriodColor = (period: string) => {
-    switch (period) {
-      case 'morning':
-        return 'bg-yellow-50 border-yellow-200'
-      case 'afternoon':
-        return 'bg-blue-50 border-blue-200'
-      case 'evening':
-        return 'bg-orange-50 border-orange-200'
-      case 'night':
-        return 'bg-purple-50 border-purple-200'
-      default:
-        return 'bg-gray-50 border-gray-200'
-    }
-  }
 
   return (
     <div
       ref={drop}
-      className={`
-        relative min-h-[80px] p-3 rounded-lg border-2 transition-all duration-200
-        ${activity ? 'border-solid' : 'border-dashed'}
-        ${isOver ? 'border-blue-400 bg-blue-50' : getPeriodColor(timeSlot.period)}
-        ${!activity ? 'hover:border-gray-300' : ''}
-      `}
+      className="relative min-h-[80px] p-4 rounded-xl transition-all duration-300 backdrop-blur-sm"
       style={{
-        borderColor: isOver ? theme.colors.accent : undefined,
-        backgroundColor: isOver ? `${theme.colors.accent}10` : undefined
+        background: isOver 
+          ? `linear-gradient(135deg, var(--color-accent, ${theme.colors.accent})15, var(--color-accent, ${theme.colors.accent})25)`
+          : activity
+            ? `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})95, var(--color-primary, ${theme.colors.primary})10)`
+            : `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})80, var(--color-surface, ${theme.colors.surface})95)`,
+        border: `2px ${activity ? 'solid' : 'dashed'} ${isOver 
+          ? `var(--color-accent, ${theme.colors.accent})` 
+          : activity 
+            ? `var(--color-primary, ${theme.colors.primary})` 
+            : `var(--color-border, ${theme.colors.border})`}`,
+        boxShadow: activity 
+          ? `0 8px 32px var(--color-primary, ${theme.colors.primary})20, 0 4px 16px var(--color-primary, ${theme.colors.primary})10`
+          : isOver
+            ? `0 8px 32px var(--color-accent, ${theme.colors.accent})30`
+            : '0 2px 8px rgba(0,0,0,0.05)',
+        transform: isOver ? 'scale(1.02)' : 'scale(1)'
       }}
     >
       {/* Time Label */}
       <div className="flex items-center gap-2 mb-2">
-        <Clock className="w-4 h-4 text-gray-500" />
-        <span className="text-sm font-medium text-gray-700">{timeSlot.label}</span>
+        <Clock className="w-4 h-4" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }} />
+        <span className="text-sm font-medium" style={{ color: `var(--color-text, ${theme.colors.text})` }}>{timeSlot.label}</span>
       </div>
 
       {activity ? (
@@ -88,24 +93,25 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
           className="relative"
         >
           <div
-            className="p-3 rounded-lg shadow-sm border"
+            className="p-4 rounded-xl shadow-lg border backdrop-blur-sm hover:shadow-xl transition-all duration-300"
             style={{
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border
+              background: `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})95, var(--color-primary, ${theme.colors.primary})08)`,
+              borderColor: `var(--color-primary, ${theme.colors.primary})40`,
+              boxShadow: `0 8px 32px var(--color-primary, ${theme.colors.primary})15, 0 4px 16px rgba(0,0,0,0.1)`
             }}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h4 className="font-medium text-sm mb-1" style={{ color: theme.colors.text }}>
+                <h4 className="font-medium text-sm mb-1" style={{ color: `var(--color-text, ${theme.colors.text})` }}>
                   {activity.title}
                 </h4>
-                <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                <p className="text-xs" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }}>
                   {activity.description}
                 </p>
                 {activity.duration && (
                   <div className="flex items-center gap-1 mt-2">
-                    <Clock className="w-3 h-3" style={{ color: theme.colors.textSecondary }} />
-                    <span className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                    <Clock className="w-3 h-3" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }} />
+                    <span className="text-xs" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }}>
                       {activity.duration} min
                     </span>
                   </div>
@@ -113,18 +119,22 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
               </div>
               <button
                 onClick={() => onRemoveActivity(activity.id)}
-                className="p-1 rounded-full hover:bg-red-100 transition-colors"
+                className="p-2 rounded-full transition-all duration-200 hover:scale-110"
+                style={{
+                  background: `linear-gradient(135deg, #ff4757, #ff3742)`,
+                  boxShadow: '0 4px 12px rgba(255, 71, 87, 0.3)'
+                }}
               >
-                <X className="w-4 h-4 text-red-500" />
+                <X className="w-4 h-4 text-white" />
               </button>
             </div>
           </div>
         </motion.div>
       ) : (
-        <div className="flex items-center justify-center h-12 text-gray-400">
+        <div className="flex items-center justify-center h-12 transition-all duration-200" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }}>
           <div className="text-center">
-            <Plus className="w-5 h-5 mx-auto mb-1" />
-            <span className="text-xs">Drop activity here</span>
+            <Plus className="w-5 h-5 mx-auto mb-1 opacity-60" />
+            <span className="text-xs opacity-80">Drop activity here</span>
           </div>
         </div>
       )}
@@ -146,7 +156,7 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
     : TIME_SLOTS.filter(slot => slot.period === selectedTimeRange)
 
   const getActivityForSlot = (timeSlot: string, day: 'saturday' | 'sunday') => {
-    return scheduledActivities.find(activity => 
+    return scheduledActivities?.find(activity => 
       activity.timeSlot === timeSlot && activity.day === day
     )
   }
@@ -157,23 +167,27 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
     <div className="space-y-6">
       {/* Time Filter */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-sm font-medium" style={{ color: currentTheme.colors.text }}>
+        <span className="text-sm font-medium" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
           Show:
         </span>
         {['all', 'morning', 'afternoon', 'evening', 'night'].map((period) => (
           <button
             key={period}
             onClick={() => setSelectedTimeRange(period as any)}
-            className={`
-              px-3 py-1 rounded-full text-sm font-medium transition-colors
-              ${selectedTimeRange === period 
-                ? 'text-white' 
-                : 'hover:bg-gray-100'
-              }
-            `}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 backdrop-blur-sm hover:scale-105"
             style={{
-              backgroundColor: selectedTimeRange === period ? currentTheme.colors.primary : 'transparent',
-              color: selectedTimeRange === period ? 'white' : currentTheme.colors.textSecondary
+              background: selectedTimeRange === period 
+                ? `linear-gradient(135deg, var(--color-primary, ${currentTheme.colors.primary}), var(--color-secondary, ${currentTheme.colors.secondary}))`
+                : `var(--color-surface, ${currentTheme.colors.surface})80`,
+              color: selectedTimeRange === period 
+                ? 'white' 
+                : `var(--color-text-secondary, ${currentTheme.colors.textSecondary})`,
+              border: `1px solid ${selectedTimeRange === period 
+                ? `var(--color-primary, ${currentTheme.colors.primary})` 
+                : `var(--color-border, ${currentTheme.colors.border})`}`,
+              boxShadow: selectedTimeRange === period 
+                ? `0 4px 16px var(--color-primary, ${currentTheme.colors.primary})30`
+                : '0 2px 8px rgba(0,0,0,0.05)'
             }}
           >
             {period.charAt(0).toUpperCase() + period.slice(1)}
@@ -186,16 +200,26 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
         {activeDays.map((day) => (
           <div key={day} className="space-y-4">
             {/* Day Header */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4 p-4 rounded-xl backdrop-blur-sm" style={{
+              background: `linear-gradient(135deg, var(--color-surface, ${currentTheme.colors.surface})90, var(--color-primary, ${currentTheme.colors.primary})10)`,
+              border: `1px solid var(--color-border, ${currentTheme.colors.border})`,
+              boxShadow: `0 4px 16px var(--color-primary, ${currentTheme.colors.primary})10`
+            }}>
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: day === 'saturday' ? '#3B82F6' : '#EC4899' }}
+                className="w-6 h-6 rounded-full shadow-lg"
+                style={{ 
+                  background: `linear-gradient(135deg, var(--color-primary, ${currentTheme.colors.primary}), var(--color-secondary, ${currentTheme.colors.secondary}))`,
+                  boxShadow: `0 4px 12px var(--color-primary, ${currentTheme.colors.primary})40`
+                }}
               />
-              <h3 className="text-xl font-bold capitalize" style={{ color: currentTheme.colors.text }}>
+              <h3 className="text-xl font-bold capitalize" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
                 {day}
               </h3>
-              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
-                {scheduledActivities.filter(a => a.day === day).length} activities planned
+              <div className="px-3 py-1 rounded-full text-sm font-medium" style={{ 
+                background: `var(--color-accent, ${currentTheme.colors.accent})20`,
+                color: `var(--color-accent, ${currentTheme.colors.accent})`
+              }}>
+                {scheduledActivities?.filter(a => a.day === day).length || 0} activities
               </div>
             </div>
 

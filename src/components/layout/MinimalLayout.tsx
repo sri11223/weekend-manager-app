@@ -30,7 +30,8 @@ const CATEGORIES: CategoryButton[] = [
 ]
 
 export const MinimalLayout: React.FC = () => {
-  const { currentTheme } = useTheme()
+  const { currentTheme, themeId, forceRender } = useTheme()
+  // console.log('🏠 MinimalLayout render with theme:', currentTheme.name, 'ID:', themeId, 'Render:', forceRender)
   const [searchQuery, setSearchQuery] = useState('')
   const [activePanel, setActivePanel] = useState<string | null>(null)
   const [showCommunity, setShowCommunity] = useState(false)
@@ -56,14 +57,20 @@ export const MinimalLayout: React.FC = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="min-h-screen" style={{ backgroundColor: currentTheme.colors.background }}>
+      <div key={`${themeId}-${forceRender}`} className="min-h-screen" style={{ backgroundColor: `var(--color-background, ${currentTheme.colors.background})` }}>
       {/* Clean Header Bar */}
-      <header className="border-b px-6 py-4" style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}>
+      <div 
+        className="border-b px-6 py-4"
+        style={{ 
+          background: `var(--color-primary, ${currentTheme.colors.primary})`,
+          borderColor: `var(--color-border, ${currentTheme.colors.border})`
+        }}
+      >
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           {/* Logo */}
           <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold" style={{ color: currentTheme.colors.text }}>Weekendly</h1>
-            <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+            <h1 className="text-2xl font-bold text-white">Weekendly</h1>
+            <div className="text-sm text-white/80">
               Plan your perfect weekend
             </div>
           </div>
@@ -71,56 +78,43 @@ export const MinimalLayout: React.FC = () => {
           {/* Search Bar */}
           <div className="flex-1 max-w-md mx-8">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" style={{ color: currentTheme.colors.textSecondary }} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
               <input
                 type="text"
                 placeholder="Search activities..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent"
-                style={{ 
-                  borderColor: currentTheme.colors.border,
-                  backgroundColor: currentTheme.colors.surface,
-                  color: currentTheme.colors.text,
-                  '--tw-ring-color': currentTheme.colors.primary
-                } as any}
+                className="w-full pl-10 pr-4 py-2 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/20 text-white placeholder-white/60"
               />
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-4">
-            <div className="relative">
-              <ThemeSelector />
-            </div>
             <button 
               onClick={() => setShowLongWeekend(true)}
-              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-              style={{ color: currentTheme.colors.text }}
+              className="flex items-center space-x-2 hover:opacity-80 transition-opacity text-white"
             >
               <Calendar className="w-5 h-5" />
               <span className="hidden md:inline">Long Weekend</span>
             </button>
             <button 
               onClick={() => setShowCommunity(true)}
-              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-              style={{ color: currentTheme.colors.text }}
+              className="flex items-center space-x-2 hover:opacity-80 transition-opacity text-white"
             >
               <Users className="w-5 h-5" />
               <span className="hidden md:inline">Community</span>
             </button>
             <button 
               onClick={() => setShowBudget(true)}
-              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-              style={{ color: currentTheme.colors.text }}
+              className="flex items-center space-x-2 hover:opacity-80 transition-opacity text-white"
             >
               <DollarSign className="w-5 h-5" />
               <span className="hidden md:inline">Budget</span>
             </button>
             <button 
               onClick={() => setShowSocial(true)}
-              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-              style={{ color: currentTheme.colors.text }}
+              className="flex items-center space-x-2 hover:opacity-80 transition-opacity text-white"
             >
               <Share2 className="w-5 h-5" />
               <span className="hidden md:inline">Collaborate</span>
@@ -128,16 +122,16 @@ export const MinimalLayout: React.FC = () => {
             <ThemeSelector />
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Category Navigation */}
-      <div className="border-b px-6 py-4" style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}>
+      <div className="border-b px-6 py-4" style={{ backgroundColor: `var(--color-surface, ${currentTheme.colors.surface})`, borderColor: `var(--color-border, ${currentTheme.colors.border})` }}>
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-6">
             <button
               onClick={() => handleCategoryClick('quick-add')}
               className="flex items-center space-x-2 px-4 py-2 text-white rounded-lg transition-all hover:scale-105"
-              style={{ backgroundColor: currentTheme.colors.primary }}
+              style={{ backgroundColor: `var(--color-primary, ${currentTheme.colors.primary})` }}
             >
               <Plus className="w-5 h-5" />
               <span>Add Activity</span>
@@ -155,9 +149,9 @@ export const MinimalLayout: React.FC = () => {
                   }
                 `}
                 style={{
-                  backgroundColor: activePanel === category.id ? `${currentTheme.colors.primary}20` : 'transparent',
-                  borderColor: activePanel === category.id ? currentTheme.colors.primary : 'transparent',
-                  color: activePanel === category.id ? currentTheme.colors.primary : currentTheme.colors.text
+                  backgroundColor: activePanel === category.id ? `var(--color-primary, ${currentTheme.colors.primary})20` : 'transparent',
+                  borderColor: activePanel === category.id ? `var(--color-primary, ${currentTheme.colors.primary})` : 'transparent',
+                  color: activePanel === category.id ? `var(--color-primary, ${currentTheme.colors.primary})` : `var(--color-text, ${currentTheme.colors.text})`
                 }}
               >
                 {category.icon}
@@ -166,8 +160,8 @@ export const MinimalLayout: React.FC = () => {
                   <span 
                     className="text-xs px-2 py-1 rounded-full"
                     style={{
-                      backgroundColor: currentTheme.colors.border,
-                      color: currentTheme.colors.textSecondary
+                      backgroundColor: `var(--color-border, ${currentTheme.colors.border})`,
+                      color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})`
                     }}
                   >
                     {category.count}
@@ -177,19 +171,31 @@ export const MinimalLayout: React.FC = () => {
             ))}
           </div>
           
-          <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+          <div className="text-sm" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
             This Weekend • Sep 14-15, 2024
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 px-6 py-8">
-        <div className="max-w-7xl mx-auto">
-          <EnhancedWeekendTimeline 
+      {/* Main Content */}
+      <div 
+        className="flex-1 flex flex-col min-h-0"
+        style={{ 
+          backgroundColor: `var(--color-background, ${currentTheme.colors.background})`,
+          color: `var(--color-text, ${currentTheme.colors.text})`
+        }}
+      >
+        {/* Timeline Container */}
+        <div className="flex-1 p-6 overflow-hidden">
+          <EnhancedWeekendTimeline
             scheduledActivities={scheduledActivities}
             onAddActivity={(activity, timeSlot, day) => {
-              const newActivity = { ...activity, timeSlot, day, id: `${activity.id}-${Date.now()}` }
+              const newActivity = { 
+                ...activity, 
+                timeSlot, 
+                day, 
+                id: `${activity.id}-${Date.now()}` 
+              }
               setScheduledActivities([...scheduledActivities, newActivity])
             }}
             onRemoveActivity={(activityId) => {
