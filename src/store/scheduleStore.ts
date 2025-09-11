@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { ScheduledActivity } from '../types/index'
+import { ScheduledActivity, Activity } from '../types/index'
 
 // Using global ScheduledActivity type from types/index.ts
 
@@ -38,7 +38,7 @@ export const useScheduleStore = create<ScheduleState>()(
         
         if (currentIndex === -1) return false
 
-        const newActivities: ScheduledActivity[] = []
+        const newActivities: Activity[] = []
         const mainId = `${activity.id}-${Date.now()}`
         
         // Main activity
@@ -89,7 +89,7 @@ export const useScheduleStore = create<ScheduleState>()(
           const baseId = activityId.includes('-block-') ? activityId.split('-block-')[0] : activityId
           const filtered = state.scheduledActivities.filter(a => 
             a.id !== activityId && 
-            a.scheduledId !== baseId && 
+            a.originalId !== baseId && 
             !a.id.startsWith(`${baseId}-block-`)
           )
           
@@ -102,7 +102,7 @@ export const useScheduleStore = create<ScheduleState>()(
         const state = get()
         const activity = state.scheduledActivities.find(a => a.id === activityId)
         
-        if (!activity || activity.completed) return false
+        if (!activity || activity.isBlocked) return false
         
         // Remove old activity first
         state.removeActivity(activityId)
@@ -116,11 +116,11 @@ export const useScheduleStore = create<ScheduleState>()(
       },
 
       getActivitiesForSlot: (day, timeSlot) => {
-        return get().scheduledActivities.filter(a => a.day === day && a.startTime === timeSlot)
+        return get().scheduledActivities.filter(a => a.day === day && a.timeSlot === timeSlot)
       },
 
       isSlotOccupied: (day, timeSlot) => {
-        return get().scheduledActivities.some(a => a.day === day && a.startTime === timeSlot)
+        return get().scheduledActivities.some(a => a.day === day && a.timeSlot === timeSlot)
       },
 
       clearAllActivities: () => {

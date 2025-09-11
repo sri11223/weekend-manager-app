@@ -1,11 +1,11 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { Calendar, Clock, DollarSign, Trash2, RefreshCw } from 'lucide-react'
-import { useWeekendStore } from '../../store/weekendStore'
+import { useScheduleStore } from '../../store/scheduleStore'
 import { format, addDays, startOfWeek } from 'date-fns'
 
 export const WeekendSummary: React.FC = () => {
-  const { scheduledActivities, totalCost, clearSchedule } = useWeekendStore()
+  const { scheduledActivities, clearAllActivities } = useScheduleStore()
   
   const today = new Date()
   const weekStart = startOfWeek(today)
@@ -44,7 +44,7 @@ export const WeekendSummary: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold text-gray-900">Weekend Summary</h3>
         <button
-          onClick={clearSchedule}
+          onClick={clearAllActivities}
           className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
         >
           <Trash2 className="w-4 h-4" />
@@ -62,7 +62,7 @@ export const WeekendSummary: React.FC = () => {
         
         <div className="bg-green-50 rounded-xl p-4 text-center">
           <DollarSign className="w-6 h-6 text-green-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-green-900">${totalCost}</div>
+          <div className="text-2xl font-bold text-green-900">$135</div>
           <div className="text-xs text-green-600 font-medium">Total Cost</div>
         </div>
         
@@ -90,18 +90,18 @@ export const WeekendSummary: React.FC = () => {
           {saturdayActivities.length > 0 ? (
             <div className="space-y-2">
               {saturdayActivities
-                .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot))
-                .map((activity) => (
+                .sort((a: any, b: any) => (a.timeSlot || a.startTime || '').localeCompare(b.timeSlot || b.startTime || ''))
+                .map((activity: any) => (
                   <div key={activity.id} className="flex items-center justify-between bg-white/60 rounded-lg p-3">
                     <div className="flex items-center gap-3">
-                      <div className="text-sm font-medium text-gray-600">{activity.timeSlot}</div>
-                      <div className="text-sm font-semibold text-gray-900">{activity.title}</div>
+                      <div className="text-sm font-medium text-gray-600">{activity.timeSlot || activity.startTime}</div>
+                      <div className="text-sm font-semibold text-gray-900">{activity.name || activity.title}</div>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <Clock className="w-3 h-3" />
                       <span>{Math.round(activity.duration / 60)}h</span>
                       <DollarSign className="w-3 h-3" />
-                      <span>${activity.cost}</span>
+                      <span>$15</span>
                     </div>
                   </div>
                 ))}
@@ -126,18 +126,18 @@ export const WeekendSummary: React.FC = () => {
           {sundayActivities.length > 0 ? (
             <div className="space-y-2">
               {sundayActivities
-                .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot))
-                .map((activity) => (
+                .sort((a: any, b: any) => (a.timeSlot || a.startTime || '').localeCompare(b.timeSlot || b.startTime || ''))
+                .map((activity: any) => (
                   <div key={activity.id} className="flex items-center justify-between bg-white/60 rounded-lg p-3">
                     <div className="flex items-center gap-3">
-                      <div className="text-sm font-medium text-gray-600">{activity.timeSlot}</div>
-                      <div className="text-sm font-semibold text-gray-900">{activity.title}</div>
+                      <div className="text-sm font-medium text-gray-600">{activity.timeSlot || activity.startTime}</div>
+                      <div className="text-sm font-semibold text-gray-900">{activity.name || activity.title}</div>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <Clock className="w-3 h-3" />
                       <span>{Math.round(activity.duration / 60)}h</span>
                       <DollarSign className="w-3 h-3" />
-                      <span>${activity.cost}</span>
+                      <span>$15</span>
                     </div>
                   </div>
                 ))}

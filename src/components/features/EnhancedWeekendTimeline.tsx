@@ -5,10 +5,25 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { WeatherAnimation, getWeatherForTimeSlot, getDayWeather } from '../animations/WeatherAnimations'
 import { DayNightBackground, getDayNightTheme, getDayNightColors } from '../animations/DayNightTheme'
 import { TIME_SLOTS, TimeSlot } from '../../types/theme'
-import { Activity, ScheduledActivity } from '../../types/index'
 import { useTheme } from '../../hooks/useTheme'
 
-// Using global Activity and ScheduledActivity types from types/index.ts
+interface Activity {
+  id: string
+  title: string
+  description: string
+  duration: number
+  category: string
+  image?: string
+  cost?: number
+  originalDuration?: number
+  isBlocked?: boolean
+  originalId?: string
+}
+
+interface ScheduledActivity extends Activity {
+  timeSlot: string
+  day: 'saturday' | 'sunday'
+}
 
 interface EnhancedWeekendTimelineProps {
   scheduledActivities: ScheduledActivity[]
@@ -57,13 +72,13 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
 
   return (
     <div
-      ref={drop as any}
+      ref={drop}
       className="relative min-h-[100px] p-4 rounded-xl transition-all duration-300 backdrop-blur-sm overflow-hidden"
       style={{
         background: isOver && canDrop
           ? `linear-gradient(135deg, var(--color-accent, ${theme.colors.accent})15, var(--color-accent, ${theme.colors.accent})25)`
           : activity
-            ? activity.completed
+            ? activity.isBlocked
               ? `linear-gradient(135deg, var(--color-primary, ${theme.colors.primary})10, var(--color-primary, ${theme.colors.primary})20)`
               : dayNightColors.background
             : `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})80, ${dayNightColors.overlay})`,
@@ -71,13 +86,13 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
           isOver && canDrop
             ? `var(--color-accent, ${theme.colors.accent})`
             : activity
-              ? activity.completed
+              ? activity.isBlocked
                 ? `var(--color-primary, ${theme.colors.primary})50`
                 : dayNightColors.border
               : `var(--color-border, ${theme.colors.border})`
         }`,
         boxShadow: activity
-          ? activity.completed
+          ? activity.isBlocked
             ? `0 4px 16px var(--color-primary, ${theme.colors.primary})20`
             : dayNightColors.shadow
           : isOver && canDrop
@@ -112,7 +127,7 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
           exit={{ opacity: 0, scale: 0.9 }}
           className="relative"
         >
-          {activity.completed ? (
+          {activity.isBlocked ? (
             // Blocked slot display
             <div
               className="p-3 rounded-xl border-2 border-dashed opacity-75"
@@ -123,7 +138,7 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
             >
               <div className="text-center">
                 <p className="text-sm font-medium" style={{ color: theme.colors.text }}>
-                  {activity.name} (continued)
+                  {activity.title} (continued)
                 </p>
                 <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
                   Part of multi-hour activity
@@ -143,7 +158,7 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h4 className="font-medium text-sm mb-1" style={{ color: theme.colors.text }}>
-                    {activity.name}
+                    {activity.title}
                   </h4>
                   <p className="text-xs mb-2" style={{ color: theme.colors.textSecondary }}>
                     {activity.description}
@@ -205,7 +220,7 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   scheduledActivities,
   onAddActivity,
   onRemoveActivity,
-  // onMoveActivity,
+  onMoveActivity,
   selectedDays
 }) => {
   const { currentTheme } = useTheme()
@@ -218,18 +233,18 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   // Helper functions
   const getActivityForSlot = (timeSlot: string, day: 'saturday' | 'sunday') => {
     return scheduledActivities.find(activity => 
-      activity.startTime === timeSlot && activity.day === day
+      activity.timeSlot === timeSlot && activity.day === day
     )
   }
 
   const isSlotOccupied = (timeSlot: string, day: 'saturday' | 'sunday') => {
     return scheduledActivities.some(activity => 
-      activity.startTime === timeSlot && activity.day === day
+      activity.timeSlot === timeSlot && activity.day === day
     )
   }
 
   const getActivitiesCount = (day: 'saturday' | 'sunday') => {
-    return scheduledActivities.filter(a => a.day === day && !a.completed).length
+    return scheduledActivities.filter(a => a.day === day && !a.isBlocked).length
   }
 
   const activeDays = selectedDays.filter(day => day === 'saturday' || day === 'sunday') as ('saturday' | 'sunday')[]

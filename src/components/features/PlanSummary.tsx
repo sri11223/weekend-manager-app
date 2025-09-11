@@ -1,14 +1,11 @@
 import React from 'react'
-import { Clock, MapPin, DollarSign, Calendar, TrendingUp, X } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Calendar, Clock, DollarSign, TrendingUp, X, Trash2 } from 'lucide-react'
 import { ScheduledActivity } from '../../types/index'
 import { useTheme } from '../../hooks/useTheme'
 
-// Using global ScheduledActivity type from types/index.ts
-
 interface PlanSummaryProps {
   scheduledActivities: ScheduledActivity[]
-  selectedDays: string[]
   onRemoveActivity?: (activityId: string) => void
   className?: string
 }
@@ -20,21 +17,14 @@ export const PlanSummary: React.FC<PlanSummaryProps> = ({
 }) => {
   const { currentTheme } = useTheme()
 
-  // Calculate statistics
-  const totalActivities = scheduledActivities.length
-  const totalCost = scheduledActivities.reduce((sum: number, activity) => sum + (Number(activity.cost) || 0), 0)
-  const totalDuration = scheduledActivities.reduce((sum, activity) => sum + activity.duration, 0)
-  
-  const saturdayActivities = scheduledActivities.filter(a => a.day === 'saturday').length
-  const sundayActivities = scheduledActivities.filter(a => a.day === 'sunday').length
-  
-  const categoryStats = scheduledActivities.reduce((acc, activity) => {
-    acc[activity.category] = (acc[activity.category] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
+  // Filter out blocked activities
+  const mainActivities = scheduledActivities.filter(a => !a.isBlocked)
+  const saturdayActivities = mainActivities.filter(a => a.day === 'saturday')
+  const sundayActivities = mainActivities.filter(a => a.day === 'sunday')
 
-  const topCategory = Object.entries(categoryStats)
-    .sort(([,a], [,b]) => b - a)[0]?.[0] || 'None'
+  const totalActivities = mainActivities.length
+  const totalCost = mainActivities.reduce((sum, activity) => sum + (Number(activity.cost) || 0), 0)
+  const totalDuration = mainActivities.reduce((sum, activity) => sum + activity.duration, 0)
 
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
@@ -57,196 +47,234 @@ export const PlanSummary: React.FC<PlanSummaryProps> = ({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div 
-          className="w-8 h-8 rounded-lg flex items-center justify-center"
-          style={{ backgroundColor: `var(--color-primary, ${currentTheme.colors.primary})` }}
-        >
-          <TrendingUp className="w-4 h-4 text-white" />
+      {/* Compact Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div 
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: currentTheme.colors.primary }}
+          >
+            <TrendingUp className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm" style={{ color: currentTheme.colors.text }}>
+              Weekend Summary
+            </h3>
+            <p className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+              Your planned activities overview
+            </p>
+          </div>
         </div>
-        <h3 className="text-lg font-bold" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
-          Weekend Summary
-        </h3>
+        
+        {totalActivities > 0 && (
+          <button
+            onClick={() => {
+              if (confirm('Clear all activities?')) {
+                mainActivities.forEach(activity => onRemoveActivity?.(activity.id))
+              }
+            }}
+            className="text-xs px-2 py-1 rounded-md flex items-center gap-1 hover:opacity-80"
+            style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
+          >
+            <Trash2 className="w-3 h-3" />
+            Clear All
+          </button>
+        )}
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="p-4 rounded-xl backdrop-blur-sm"
-          style={{
-            background: `linear-gradient(135deg, var(--color-surface, ${currentTheme.colors.surface})90, var(--color-primary, ${currentTheme.colors.primary})10)`,
-            border: `1px solid var(--color-border, ${currentTheme.colors.border})`
-          }}
+      {/* Compact Stats - 3 columns */}
+      <div className="grid grid-cols-3 gap-2">
+        <div 
+          className="p-3 rounded-lg text-center"
+          style={{ backgroundColor: `${currentTheme.colors.primary}15` }}
         >
-          <div className="flex items-center gap-2 mb-1">
-            <Calendar className="w-4 h-4" style={{ color: `var(--color-primary, ${currentTheme.colors.primary})` }} />
-            <span className="text-sm font-medium" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
-              Activities
-            </span>
-          </div>
-          <div className="text-2xl font-bold" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
+          <Calendar className="w-4 h-4 mx-auto mb-1" style={{ color: currentTheme.colors.primary }} />
+          <div className="text-lg font-bold" style={{ color: currentTheme.colors.text }}>
             {totalActivities}
           </div>
-        </motion.div>
-
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="p-4 rounded-xl backdrop-blur-sm"
-          style={{
-            background: `linear-gradient(135deg, var(--color-surface, ${currentTheme.colors.surface})90, var(--color-accent, ${currentTheme.colors.accent})10)`,
-            border: `1px solid var(--color-border, ${currentTheme.colors.border})`
-          }}
+          <div className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+            Activities
+          </div>
+        </div>
+        
+        <div 
+          className="p-3 rounded-lg text-center"
+          style={{ backgroundColor: `${currentTheme.colors.accent}15` }}
         >
-          <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4" style={{ color: `var(--color-accent, ${currentTheme.colors.accent})` }} />
-            <span className="text-sm font-medium" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
-              Budget
-            </span>
+          <DollarSign className="w-4 h-4 mx-auto mb-1" style={{ color: currentTheme.colors.accent }} />
+          <div className="text-lg font-bold" style={{ color: currentTheme.colors.text }}>
+            ${totalCost}
           </div>
-          <div className="text-2xl font-bold" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
-            {totalCost}
+          <div className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+            Budget
           </div>
-        </motion.div>
-
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="p-4 rounded-xl backdrop-blur-sm"
-          style={{
-            background: `linear-gradient(135deg, var(--color-surface, ${currentTheme.colors.surface})90, var(--color-secondary, ${currentTheme.colors.secondary})10)`,
-            border: `1px solid var(--color-border, ${currentTheme.colors.border})`
-          }}
+        </div>
+        
+        <div 
+          className="p-3 rounded-lg text-center"
+          style={{ backgroundColor: `${currentTheme.colors.secondary}15` }}
         >
-          <div className="flex items-center gap-2 mb-1">
-            <Clock className="w-4 h-4" style={{ color: `var(--color-secondary, ${currentTheme.colors.secondary})` }} />
-            <span className="text-sm font-medium" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
-              Duration
-            </span>
-          </div>
-          <div className="text-2xl font-bold" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
+          <Clock className="w-4 h-4 mx-auto mb-1" style={{ color: currentTheme.colors.secondary }} />
+          <div className="text-lg font-bold" style={{ color: currentTheme.colors.text }}>
             {formatDuration(totalDuration)}
           </div>
-        </motion.div>
-
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="p-4 rounded-xl backdrop-blur-sm"
-          style={{
-            background: `linear-gradient(135deg, var(--color-surface, ${currentTheme.colors.surface})90, var(--color-primary, ${currentTheme.colors.primary})10)`,
-            border: `1px solid var(--color-border, ${currentTheme.colors.border})`
-          }}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <MapPin className="w-4 h-4" style={{ color: `var(--color-primary, ${currentTheme.colors.primary})` }} />
-            <span className="text-sm font-medium" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
-              Top Category
-            </span>
-          </div>
-          <div className="text-lg font-bold flex items-center gap-1" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
-            <span>{getCategoryIcon(topCategory)}</span>
-            <span className="capitalize">{topCategory}</span>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Day Breakdown */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-semibold" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
-          Day Breakdown
-        </h4>
-        
-        <div className="space-y-2">
-          <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: `var(--color-surface, ${currentTheme.colors.surface})` }}>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: `var(--color-primary, ${currentTheme.colors.primary})` }} />
-              <span className="font-medium" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>Saturday</span>
-            </div>
-            <span className="text-sm font-medium" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
-              {saturdayActivities} activities
-            </span>
-          </div>
-          
-          <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: `var(--color-surface, ${currentTheme.colors.surface})` }}>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: `var(--color-secondary, ${currentTheme.colors.secondary})` }} />
-              <span className="font-medium" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>Sunday</span>
-            </div>
-            <span className="text-sm font-medium" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
-              {sundayActivities} activities
-            </span>
+          <div className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+            Duration
           </div>
         </div>
       </div>
 
-      {/* Activity List */}
-      {scheduledActivities.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
-            Planned Activities
-          </h4>
+      {/* Day Sections - NO SCROLL, FIXED HEIGHT */}
+      <div className="space-y-3">
+        {/* Saturday */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: currentTheme.colors.primary }}
+              />
+              <h4 className="font-semibold text-sm" style={{ color: currentTheme.colors.text }}>
+                Saturday
+              </h4>
+            </div>
+            <span className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+              {saturdayActivities.length} activities
+            </span>
+          </div>
           
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {scheduledActivities.map((activity) => (
-              <motion.div
-                key={activity.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                whileHover={{ scale: 1.02, x: 4 }}
-                className="group flex items-center gap-3 p-3 rounded-xl backdrop-blur-sm hover:shadow-md transition-all"
-                style={{
-                  background: `linear-gradient(135deg, ${currentTheme.colors.surface}90, ${currentTheme.colors.primary}05)`,
-                  border: `1px solid ${currentTheme.colors.border}`
-                }}
-              >
-                <div className="text-lg">{getCategoryIcon(activity.category)}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate" style={{ color: currentTheme.colors.text }}>
-                    {activity.name}
-                  </div>
-                  <div className="text-xs flex items-center gap-2" style={{ color: currentTheme.colors.textSecondary }}>
-                    <span className="capitalize">{activity.day}</span>
-                    <span>•</span>
-                    <span>{activity.startTime}</span>
-                    <span>•</span>
-                    <span>{formatDuration(activity.duration)}</span>
-                    {activity.cost !== undefined && (
-                      <>
+          {/* FIXED: Remove max-height and overflow to prevent scrollbars */}
+          <div className="space-y-2">
+            {saturdayActivities.length === 0 ? (
+              <p className="text-xs text-center py-4 italic" style={{ color: currentTheme.colors.textSecondary }}>
+                No activities planned
+              </p>
+            ) : (
+              saturdayActivities
+                .sort((a, b) => (a.timeSlot || '').localeCompare(b.timeSlot || ''))
+                .slice(0, 3) // Show only first 3 activities to prevent overflow
+                .map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-center gap-2 p-2 rounded-md group hover:bg-opacity-80 transition-colors"
+                    style={{ backgroundColor: `${currentTheme.colors.surface}60` }}
+                  >
+                    <span className="text-sm flex-shrink-0">{getCategoryIcon(activity.category)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate" style={{ color: currentTheme.colors.text }}>
+                        {activity.title || activity.name}
+                      </div>
+                      <div className="text-xs flex items-center gap-1 truncate" style={{ color: currentTheme.colors.textSecondary }}>
+                        <span>{activity.timeSlot}</span>
                         <span>•</span>
-                        <span className={Number(activity.cost) === 0 ? 'text-green-600 font-medium' : 'text-blue-600 font-medium'}>
-                          {Number(activity.cost) === 0 ? 'FREE' : `$${activity.cost}`}
-                        </span>
-                      </>
+                        <span>{formatDuration(activity.duration)}</span>
+                        <span>•</span>
+                        <span>${activity.cost || 0}</span>
+                      </div>
+                    </div>
+                    {onRemoveActivity && (
+                      <button
+                        onClick={() => onRemoveActivity(activity.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity"
+                        style={{ color: '#dc2626' }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                     )}
                   </div>
-                </div>
-                {onRemoveActivity && !activity.completed && (
-                  <button
-                    onClick={() => onRemoveActivity(activity.id)}
-                    className="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-100 transition-all"
-                    style={{ color: '#ef4444' }}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </motion.div>
-            ))}
+                ))
+            )}
+            {/* Show "and X more" if there are more than 3 activities */}
+            {saturdayActivities.length > 3 && (
+              <p className="text-xs text-center py-1" style={{ color: currentTheme.colors.textSecondary }}>
+                and {saturdayActivities.length - 3} more activities
+              </p>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Empty State */}
-      {scheduledActivities.length === 0 && (
-        <div className="text-center py-8">
-          <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" 
-               style={{ backgroundColor: `var(--color-border, ${currentTheme.colors.border})` }}>
-            <Calendar className="w-6 h-6" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }} />
+        {/* Sunday */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: currentTheme.colors.secondary }}
+              />
+              <h4 className="font-semibold text-sm" style={{ color: currentTheme.colors.text }}>
+                Sunday
+              </h4>
+            </div>
+            <span className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+              {sundayActivities.length} activities
+            </span>
           </div>
-          <h4 className="font-medium mb-1" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
-            No activities planned yet
+          
+          {/* FIXED: Remove max-height and overflow to prevent scrollbars */}
+          <div className="space-y-2">
+            {sundayActivities.length === 0 ? (
+              <p className="text-xs text-center py-4 italic" style={{ color: currentTheme.colors.textSecondary }}>
+                No activities planned
+              </p>
+            ) : (
+              sundayActivities
+                .sort((a, b) => (a.timeSlot || '').localeCompare(b.timeSlot || ''))
+                .slice(0, 3) // Show only first 3 activities to prevent overflow
+                .map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-center gap-2 p-2 rounded-md group hover:bg-opacity-80 transition-colors"
+                    style={{ backgroundColor: `${currentTheme.colors.surface}60` }}
+                  >
+                    <span className="text-sm flex-shrink-0">{getCategoryIcon(activity.category)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate" style={{ color: currentTheme.colors.text }}>
+                        {activity.title || activity.name}
+                      </div>
+                      <div className="text-xs flex items-center gap-1 truncate" style={{ color: currentTheme.colors.textSecondary }}>
+                        <span>{activity.timeSlot}</span>
+                        <span>•</span>
+                        <span>{formatDuration(activity.duration)}</span>
+                        <span>•</span>
+                        <span>${activity.cost || 0}</span>
+                      </div>
+                    </div>
+                    {onRemoveActivity && (
+                      <button
+                        onClick={() => onRemoveActivity(activity.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity"
+                        style={{ color: '#dc2626' }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                ))
+            )}
+            {/* Show "and X more" if there are more than 3 activities */}
+            {sundayActivities.length > 3 && (
+              <p className="text-xs text-center py-1" style={{ color: currentTheme.colors.textSecondary }}>
+                and {sundayActivities.length - 3} more activities
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Empty State for limited space */}
+      {totalActivities === 0 && (
+        <div className="text-center py-6">
+          <div 
+            className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2"
+            style={{ backgroundColor: `${currentTheme.colors.primary}15` }}
+          >
+            <Calendar className="w-6 h-6" style={{ color: currentTheme.colors.primary }} />
+          </div>
+          <h4 className="font-medium text-sm mb-1" style={{ color: currentTheme.colors.text }}>
+            No activities planned
           </h4>
-          <p className="text-sm" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
-            Start adding activities to see your weekend summary
+          <p className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+            Drag activities here to get started
           </p>
         </div>
       )}

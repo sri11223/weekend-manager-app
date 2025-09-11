@@ -2,7 +2,7 @@ import React from 'react'
 import { useDrop } from 'react-dnd'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ItemTypes } from './DraggableActivityCard'
-import { useWeekendStore } from '../../store/weekendStore'
+import { useScheduleStore } from '../../store/scheduleStore'
 import { Clock, X, Sunrise, Sun, Sunset, Moon, Star, Calendar, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -17,21 +17,28 @@ const timeSlots = [
 ]
 
 const WeekendTimeline: React.FC = () => {
-  const { removeActivity, getActivityForSlot, hasTimeConflict, addActivity } = useWeekendStore()
+  const { removeActivity, getActivitiesForSlot, isSlotOccupied, addActivity } = useScheduleStore()
 
   const DroppableSlot: React.FC<{ day: 'saturday' | 'sunday'; timeSlot: string; slotData: any }> = ({ day, timeSlot, slotData }) => {
-    const scheduledActivity = getActivityForSlot(day, timeSlot)
+    // Convert timeSlot format from "8:00 AM" to "8am" to match scheduleStore format
+    const convertTimeSlot = (time: string) => {
+      return time.toLowerCase().replace(/:/g, '').replace(' ', '')
+    }
+    
+    const convertedTimeSlot = convertTimeSlot(timeSlot)
+    const scheduledActivities = getActivitiesForSlot(day, convertedTimeSlot)
+    const scheduledActivity = scheduledActivities.length > 0 ? scheduledActivities[0] : null
     
     const [{ isOver, canDrop }, drop] = useDrop({
       accept: ItemTypes.ACTIVITY,
       drop: (item: { activity: any }) => {
-        if (hasTimeConflict(day, timeSlot, item.activity.duration)) {
-          toast.error('⚠️ Time conflict! This slot overlaps with another activity.')
+        if (isSlotOccupied(day, convertedTimeSlot)) {
+          toast.error('⚠️ Time conflict! This slot is already occupied.')
           return
         }
         
-        addActivity(item.activity, day, timeSlot)
-        toast.success(`✨ Added ${item.activity.title} to ${day} ${timeSlot}`)
+        addActivity(item.activity, convertedTimeSlot, day)
+        toast.success(`✨ Added ${item.activity.name || item.activity.title} to ${day} ${timeSlot}`)
       },
       collect: (monitor) => ({
         isOver: monitor.isOver(),
@@ -88,7 +95,7 @@ const WeekendTimeline: React.FC = () => {
 
                 <div className="mb-3">
                   <h4 className="font-bold text-gray-900 text-base leading-tight mb-2 pr-4">
-                    {scheduledActivity.title}
+                    {scheduledActivity.name || scheduledActivity.title}
                   </h4>
                   <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
                     {scheduledActivity.description}
@@ -104,7 +111,7 @@ const WeekendTimeline: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
                     <span className="font-medium">
-                      {scheduledActivity.cost === 0 ? 'Free' : `$${scheduledActivity.cost}`}
+                      Free
                     </span>
                   </div>
                 </div>

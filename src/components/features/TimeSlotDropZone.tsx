@@ -57,7 +57,7 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
 
       {activity ? (
         <div>
-          <h4 className="font-medium text-gray-900 truncate">{activity.title}</h4>
+          <h4 className="font-medium text-gray-900 truncate">{activity.name || activity.title}</h4>
           <p className="text-xs text-gray-600 mb-2">{activity.description}</p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-gray-500">
