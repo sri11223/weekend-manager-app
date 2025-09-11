@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X, Search, Filter, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Activity } from './DraggableActivityCard'
-import { enhancedMockService } from '../../services/enhancedMockService'
-import { apiIntegrationService } from '../../services/apiIntegrationService'
+import { apiManager } from '../../services/externalApis'
 import DraggableActivityItem from './DraggableActivityItem'
 // import TimeSlotDropZone from './TimeSlotDropZone'
 import { useDrop } from 'react-dnd'
@@ -18,7 +17,7 @@ interface FloatingActivityBrowserProps {
 }
 
 const CATEGORY_CONFIGS = {
-  movies: {
+  entertainment: {
     title: 'Movies & Shows',
     description: 'Discover trending movies and shows',
     color: 'purple',
@@ -30,7 +29,7 @@ const CATEGORY_CONFIGS = {
     color: 'orange',
     bgGradient: 'from-orange-500 to-red-500'
   },
-  games: {
+  gaming: {
     title: 'Games & Entertainment',
     description: 'Explore games and fun activities',
     color: 'blue',
@@ -47,6 +46,30 @@ const CATEGORY_CONFIGS = {
     description: 'Connect with friends and family',
     color: 'pink',
     bgGradient: 'from-pink-500 to-rose-500'
+  },
+  cultural: {
+    title: 'Cultural Activities',
+    description: 'Museums, galleries, and cultural experiences',
+    color: 'indigo',
+    bgGradient: 'from-indigo-500 to-purple-500'
+  },
+  wellness: {
+    title: 'Wellness & Health',
+    description: 'Relaxation and wellness activities',
+    color: 'emerald',
+    bgGradient: 'from-emerald-500 to-teal-500'
+  },
+  shopping: {
+    title: 'Shopping',
+    description: 'Shopping and retail experiences',
+    color: 'rose',
+    bgGradient: 'from-rose-500 to-pink-500'
+  },
+  'trip-planning': {
+    title: 'Trip Planning',
+    description: 'Weekend getaways and travel experiences',
+    color: 'cyan',
+    bgGradient: 'from-cyan-500 to-blue-500'
   }
 }
 
@@ -86,7 +109,7 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   const [filter, setFilter] = useState<'all' | 'free' | 'paid'>('all')
   const [selectedDay, setSelectedDay] = useState<'saturday' | 'sunday'>('saturday')
 
-  const config = CATEGORY_CONFIGS[category as keyof typeof CATEGORY_CONFIGS] || CATEGORY_CONFIGS.movies
+  const config = CATEGORY_CONFIGS[category as keyof typeof CATEGORY_CONFIGS] || CATEGORY_CONFIGS.entertainment
 
   useEffect(() => {
     loadActivities()
@@ -95,31 +118,58 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   const loadActivities = async () => {
     try {
       setLoading(true)
-      let result: Activity[] = []
+      let apiResponse
 
-      // Get activities from mock service first
+      console.log('Loading activities for category:', category, 'search:', localSearch);
+      
       if (localSearch.trim()) {
-        const mockActivities = await enhancedMockService.getAllActivities()
-        result = mockActivities.filter(activity => 
-          activity.title.toLowerCase().includes(localSearch.toLowerCase()) ||
-          activity.description.toLowerCase().includes(localSearch.toLowerCase())
-        )
+        // Search across all activities using mixed results
+        apiResponse = await apiManager.getMixedActivities({ 
+          limit: 20,
+          location: { lat: 40.7128, lon: -74.0060 } // Default NYC
+        })
       } else {
-        result = await enhancedMockService.getActivitiesByCategory(category)
+        // Map UI category to API category
+        const categoryMap: Record<string, string> = {
+          'movies': 'entertainment',
+          'games': 'gaming',
+          'food': 'food',
+          'outdoor': 'outdoor',
+          'social': 'social',
+          'cultural': 'cultural',
+          'wellness': 'wellness',
+          'shopping': 'shopping'
+        };
+        
+        const apiCategory = categoryMap[category] || category;
+        console.log('Mapped category:', category, '->', apiCategory);
+        
+        // Load by category using new API manager
+        apiResponse = await apiManager.getActivitiesByCategory(apiCategory as any, { 
+          limit: 20,
+          location: { lat: 40.7128, lon: -74.0060 } // Default NYC
+        })
       }
+      
+      console.log('API Response:', apiResponse);
 
-      // Add API results if available
-      try {
-        if (localSearch.trim()) {
-          const apiActivities = await apiIntegrationService.searchActivities(localSearch, 10)
-          result = [...result, ...apiActivities]
-        } else {
-          const apiActivities = await apiIntegrationService.getActivitiesByCategory(category, 15)
-          result = [...result, ...apiActivities]
-        }
-      } catch (error) {
-        console.log('API failed, using mock data only:', error)
-      }
+      // Convert API activities to component activities
+      const apiActivities = apiResponse.success && apiResponse.data ? apiResponse.data : []
+      let result: Activity[] = apiActivities.map(apiActivity => ({
+        id: apiActivity.id,
+        title: apiActivity.title,
+        description: apiActivity.description,
+        category: apiActivity.category,
+        duration: apiActivity.duration,
+        cost: apiActivity.price === 'free' ? 0 : apiActivity.price === 'low' ? 10 : apiActivity.price === 'medium' ? 25 : 50,
+        weatherPreference: 'any',
+        moodTags: apiActivity.mood || [],
+        image: apiActivity.image || '/api/placeholder/300/200',
+        rating: apiActivity.rating,
+        location: apiActivity.location?.name,
+        isApiGenerated: true,
+        apiSource: apiResponse.source
+      }))
 
       // Apply filters
       if (filter === 'free') {
@@ -136,6 +186,8 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
       setActivities(uniqueActivities.slice(0, 30))
     } catch (error) {
       console.error('Failed to load activities:', error)
+      // Fallback to empty array on error
+      setActivities([])
     } finally {
       setLoading(false)
     }

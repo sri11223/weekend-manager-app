@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Film, Utensils, Gamepad2, MapPin, Users } from 'lucide-react'
+import { Search, Film, Utensils, Gamepad2, MapPin, Users, Plane } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
@@ -7,6 +7,7 @@ import EnhancedWeekendTimeline from '../features/EnhancedWeekendTimeline'
 import FloatingActivityBrowser from '../features/FloatingActivityBrowser'
 import ThemeSelector from '../features/ThemeSelector'
 import PlanSummary from '../features/PlanSummary'
+import LongWeekendBanner from '../features/LongWeekendBanner'
 import { useTheme } from '../../hooks/useTheme'
 import { useScheduleStore } from '../../store/scheduleStore'
 
@@ -16,6 +17,7 @@ const CATEGORIES = [
   { id: 'games', name: 'Games', icon: <Gamepad2 className="w-4 h-4" />, color: 'bg-blue-500', count: 15 },
   { id: 'outdoor', name: 'Outdoor', icon: <MapPin className="w-4 h-4" />, color: 'bg-green-500', count: 12 },
   { id: 'social', name: 'Social', icon: <Users className="w-4 h-4" />, color: 'bg-pink-500', count: 8 },
+  { id: 'trip-planning', name: 'Trips', icon: <Plane className="w-4 h-4" />, color: 'bg-cyan-500', count: 6 },
 ]
 
 export const MinimalLayout: React.FC = () => {
@@ -198,6 +200,8 @@ export const MinimalLayout: React.FC = () => {
         >
           {/* Timeline Container */}
           <section className="flex-1 p-6 overflow-hidden">
+            {/* Long Weekend Banner */}
+            <LongWeekendBanner />
             <EnhancedWeekendTimeline
               scheduledActivities={scheduledActivities}
               onAddActivity={handleAddActivity}
