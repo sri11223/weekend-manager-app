@@ -1,5 +1,5 @@
 import React from 'react'
-import { Calendar, Share2, Settings, Bell, User } from 'lucide-react'
+import { Calendar, Share2, Settings } from 'lucide-react'
 
 interface HeaderProps {
   onCalendarClick?: () => void

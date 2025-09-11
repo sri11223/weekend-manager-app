@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Share2, Download, Image, Link, Facebook, Twitter, Instagram, Copy, Check } from 'lucide-react'
+import { Share2, Download, Image, Facebook, Twitter, Instagram, Copy, Check } from 'lucide-react'
 import { useWeekendStore } from '../../store/weekendStore'
 import { format } from 'date-fns'
 import html2canvas from 'html2canvas'

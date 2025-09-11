@@ -55,7 +55,7 @@ export class EnhancedMockService {
       'clear': ['outdoor', 'sunny', 'any']
     }
     
-    const validWeathers = weatherMap[weather.toLowerCase()] || ['any']
+    const validWeathers = (weatherMap as any)[weather.toLowerCase()] || ['any']
     
     return this.activities.filter(activity => 
       validWeathers.includes(activity.weatherPreference) &&
@@ -204,7 +204,7 @@ export class EnhancedMockService {
       'clear': ['clear_skies', 'clear_morning', 'clear_evening']
     }
     
-    const currentConditions = weatherMappings[current.toLowerCase()] || []
+    const currentConditions = (weatherMappings as any)[current.toLowerCase()] || []
     return currentConditions.includes(required) || required === 'any'
   }
 

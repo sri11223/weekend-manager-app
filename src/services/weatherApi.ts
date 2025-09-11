@@ -96,7 +96,7 @@ interface WeatherData {
     }
   
     // SIMPLIFIED: Skip historical data to avoid 404 errors
-    async getHistoricalWeather(location: Location, daysBack: number = 1): Promise<WeatherData[]> {
+    async getHistoricalWeather(_location: Location, _daysBack: number = 1): Promise<WeatherData[]> {
       console.log('Historical weather skipped to avoid API errors')
       return [] // Return empty array - no historical data for now
     }
@@ -142,7 +142,7 @@ interface WeatherData {
   
     async getComprehensiveWeather(
       location: Location, 
-      daysBack: number = 0, // Skip historical  
+      _daysBack: number = 0, // Skip historical  
       daysForward: number = 7
     ) {
       try {

@@ -1,34 +1,28 @@
 import React from 'react'
+import { Clock, MapPin, DollarSign, Calendar, TrendingUp, X } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { Clock, DollarSign, MapPin, Calendar, TrendingUp } from 'lucide-react'
+import { ScheduledActivity } from '../../types/index'
 import { useTheme } from '../../hooks/useTheme'
 
-interface Activity {
-  id: string
-  title: string
-  description: string
-  duration: number
-  category: string
-  image?: string
-  cost?: number
-  timeSlot: string
-  day: 'saturday' | 'sunday'
-}
+// Using global ScheduledActivity type from types/index.ts
 
 interface PlanSummaryProps {
-  scheduledActivities: Activity[]
+  scheduledActivities: ScheduledActivity[]
+  selectedDays: string[]
+  onRemoveActivity?: (activityId: string) => void
   className?: string
 }
 
 export const PlanSummary: React.FC<PlanSummaryProps> = ({ 
   scheduledActivities, 
+  onRemoveActivity,
   className = '' 
 }) => {
   const { currentTheme } = useTheme()
 
   // Calculate statistics
   const totalActivities = scheduledActivities.length
-  const totalCost = scheduledActivities.reduce((sum, activity) => sum + (activity.cost || 0), 0)
+  const totalCost = scheduledActivities.reduce((sum: number, activity) => sum + (Number(activity.cost) || 0), 0)
   const totalDuration = scheduledActivities.reduce((sum, activity) => sum + activity.duration, 0)
   
   const saturdayActivities = scheduledActivities.filter(a => a.day === 'saturday').length
@@ -112,7 +106,7 @@ export const PlanSummary: React.FC<PlanSummaryProps> = ({
             </span>
           </div>
           <div className="text-2xl font-bold" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
-            ${totalCost}
+            {totalCost}
           </div>
         </motion.div>
 
@@ -198,29 +192,43 @@ export const PlanSummary: React.FC<PlanSummaryProps> = ({
                 key={activity.id}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-3 p-3 rounded-lg backdrop-blur-sm"
+                whileHover={{ scale: 1.02, x: 4 }}
+                className="group flex items-center gap-3 p-3 rounded-xl backdrop-blur-sm hover:shadow-md transition-all"
                 style={{
-                  background: `var(--color-surface, ${currentTheme.colors.surface})80`,
-                  border: `1px solid var(--color-border, ${currentTheme.colors.border})`
+                  background: `linear-gradient(135deg, ${currentTheme.colors.surface}90, ${currentTheme.colors.primary}05)`,
+                  border: `1px solid ${currentTheme.colors.border}`
                 }}
               >
                 <div className="text-lg">{getCategoryIcon(activity.category)}</div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
-                    {activity.title}
+                  <div className="font-medium truncate" style={{ color: currentTheme.colors.text }}>
+                    {activity.name}
                   </div>
-                  <div className="text-xs flex items-center gap-2" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
+                  <div className="text-xs flex items-center gap-2" style={{ color: currentTheme.colors.textSecondary }}>
                     <span className="capitalize">{activity.day}</span>
                     <span>•</span>
-                    <span>{activity.timeSlot}</span>
-                    {activity.cost && (
+                    <span>{activity.startTime}</span>
+                    <span>•</span>
+                    <span>{formatDuration(activity.duration)}</span>
+                    {activity.cost !== undefined && (
                       <>
                         <span>•</span>
-                        <span>${activity.cost}</span>
+                        <span className={Number(activity.cost) === 0 ? 'text-green-600 font-medium' : 'text-blue-600 font-medium'}>
+                          {Number(activity.cost) === 0 ? 'FREE' : `$${activity.cost}`}
+                        </span>
                       </>
                     )}
                   </div>
                 </div>
+                {onRemoveActivity && !activity.completed && (
+                  <button
+                    onClick={() => onRemoveActivity(activity.id)}
+                    className="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-100 transition-all"
+                    style={{ color: '#ef4444' }}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </motion.div>
             ))}
           </div>

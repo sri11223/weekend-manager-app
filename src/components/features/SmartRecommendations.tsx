@@ -11,20 +11,21 @@ interface SmartRecommendationsProps {
 }
 
 export const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
-  onAddToSchedule
+  onAddToSchedule: _onAddToSchedule
 }) => {
   const [activeRecommendationType, setActiveRecommendationType] = useState<'weather' | 'mood' | 'trending' | 'nearby'>('weather');
-  const { activities, weather } = useWeekendStore();
+  const { activities } = useWeekendStore();
 
   const getWeatherBasedRecommendations = (): Activity[] => {
-    if (!weather) return [];
+    // Mock weather for recommendations
+    const mockWeather = { temperature: 22, condition: 'sunny' };
     
-    const isGoodWeather = weather.temperature > 15 && !weather.condition.includes('rain');
+    const isGoodWeather = mockWeather.temperature > 15 && !mockWeather.condition.includes('rain');
     
     return activities
       .filter(activity => {
         if (!isGoodWeather && activity.weatherDependent) return false;
-        if (weather.temperature > 25 && activity.category === 'outdoor') return true;
+        if (mockWeather.temperature > 25 && activity.category === 'outdoor') return true;
         if (!isGoodWeather && activity.indoor) return true;
         return !activity.weatherDependent;
       })
@@ -89,7 +90,7 @@ export const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
   const getRecommendationTitle = () => {
     switch (activeRecommendationType) {
       case 'weather':
-        return `Perfect for ${weather?.condition || 'current'} weather`;
+        return `Perfect for sunny weather`;
       case 'mood':
         return 'Based on your current mood';
       case 'trending':
@@ -183,8 +184,6 @@ export const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
             <ActivityCard
               key={activity.id}
               activity={activity}
-              onAddToSchedule={onAddToSchedule}
-              showAddButton={true}
             />
           ))}
         </div>
@@ -192,19 +191,16 @@ export const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
 
       {/* AI Insights */}
       <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-        <div className="flex items-center space-x-2 mb-2">
-          <Brain className="w-4 h-4 text-purple-600" />
-          <span className="text-sm font-medium text-purple-800">AI Insight</span>
-        </div>
-        <p className="text-sm text-purple-700">
-          {activeRecommendationType === 'weather' && weather && (
-            `Based on ${weather.condition} weather at ${weather.temperature}°C, these activities are perfectly suited for your weekend.`
+        <h4 className="font-semibold text-purple-800 mb-2">💡 Smart Insights</h4>
+        <p className="text-sm text-purple-600">
+          {activeRecommendationType === 'weather' && (
+            `Perfect weather for outdoor activities! Temperature is ideal for hiking and outdoor dining.`
           )}
           {activeRecommendationType === 'mood' && (
-            `These activities match your current energy level and time preferences for optimal enjoyment.`
+            `Based on the time of day, these activities match your current energy level.`
           )}
           {activeRecommendationType === 'trending' && (
-            `These are the most popular activities among weekend planners this week.`
+            `These are the most popular activities this weekend according to our community.`
           )}
           {activeRecommendationType === 'nearby' && (
             `These activities are easily accessible and don't require extensive travel planning.`

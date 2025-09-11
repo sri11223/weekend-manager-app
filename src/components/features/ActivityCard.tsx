@@ -2,7 +2,7 @@ import React from 'react'
 import { cn } from '@/utils/cn'
 import type { Activity } from '@/types'
 import { motion } from 'framer-motion'
-import { CATEGORY_COLORS, COST_COLORS, DIFFICULTY_COLORS } from '@/constants'
+import { CATEGORY_COLORS, COST_COLORS } from '@/constants'
 import { Clock, MapPin, Zap, DollarSign } from 'lucide-react'
 
 interface ActivityCardProps {

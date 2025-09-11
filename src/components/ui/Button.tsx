@@ -23,6 +23,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const isDisabled = disabled || loading
+  const { onDrag, onDragStart, onDragEnd, onAnimationStart, onAnimationEnd, ...buttonProps } = props
 
   return (
     <motion.button
@@ -56,7 +57,7 @@ export const Button: React.FC<ButtonProps> = ({
         className
       )}
       disabled={isDisabled}
-      {...props}
+      {...buttonProps}
     >
       {/* Loading spinner */}
       {loading && (

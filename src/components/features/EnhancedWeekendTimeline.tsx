@@ -1,32 +1,20 @@
 import React, { useState } from 'react'
 import { useDrop } from 'react-dnd'
-import { Clock, Plus, X } from 'lucide-react'
+import { Clock, X, Plus } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { WeatherAnimation, getWeatherForTimeSlot, getDayWeather } from '../animations/WeatherAnimations'
 import { DayNightBackground, getDayNightTheme, getDayNightColors } from '../animations/DayNightTheme'
-// import { Activity } from '../../types/activity'
-
-interface Activity {
-  id: string
-  title: string
-  description: string
-  duration: number
-  category: string
-  image?: string
-  cost?: number
-}
 import { TIME_SLOTS, TimeSlot } from '../../types/theme'
+import { Activity, ScheduledActivity } from '../../types/index'
 import { useTheme } from '../../hooks/useTheme'
-import { motion, AnimatePresence } from 'framer-motion'
 
-interface ScheduledActivity extends Activity {
-  timeSlot: string
-  day: 'saturday' | 'sunday'
-}
+// Using global Activity and ScheduledActivity types from types/index.ts
 
 interface EnhancedWeekendTimelineProps {
   scheduledActivities: ScheduledActivity[]
-  onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday') => void
+  onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday') => boolean
   onRemoveActivity: (activityId: string) => void
+  onMoveActivity?: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday') => boolean
   selectedDays: ('saturday' | 'sunday' | 'friday' | 'monday')[]
 }
 
@@ -34,7 +22,8 @@ interface TimeSlotDropZoneProps {
   timeSlot: TimeSlot
   day: 'saturday' | 'sunday'
   activity?: ScheduledActivity
-  onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday') => void
+  isOccupied: boolean
+  onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday') => boolean
   onRemoveActivity: (activityId: string) => void
   theme: any
 }
@@ -43,20 +32,24 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
   timeSlot,
   day,
   activity,
+  isOccupied,
   onAddActivity,
   onRemoveActivity,
   theme
 }) => {
-  const [{ isOver }, drop] = useDrop({
+  const [{ isOver, canDrop }, drop] = useDrop({
     accept: 'activity',
     drop: (item: Activity) => {
-      onAddActivity(item, timeSlot.id, day)
+      if (!isOccupied) {
+        onAddActivity(item, timeSlot.id, day)
+      }
     },
+    canDrop: () => !isOccupied,
     collect: (monitor) => ({
-      isOver: monitor.isOver()
+      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop()
     })
   })
-
 
   const weather = getWeatherForTimeSlot(timeSlot.label, day)
   const dayNightPeriod = getDayNightTheme(timeSlot.label)
@@ -64,39 +57,54 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
 
   return (
     <div
-      ref={drop}
-      className="relative min-h-[80px] p-4 rounded-xl transition-all duration-300 backdrop-blur-sm overflow-hidden"
+      ref={drop as any}
+      className="relative min-h-[100px] p-4 rounded-xl transition-all duration-300 backdrop-blur-sm overflow-hidden"
       style={{
-        background: isOver 
+        background: isOver && canDrop
           ? `linear-gradient(135deg, var(--color-accent, ${theme.colors.accent})15, var(--color-accent, ${theme.colors.accent})25)`
           : activity
-            ? dayNightColors.background
+            ? activity.completed
+              ? `linear-gradient(135deg, var(--color-primary, ${theme.colors.primary})10, var(--color-primary, ${theme.colors.primary})20)`
+              : dayNightColors.background
             : `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})80, ${dayNightColors.overlay})`,
-        border: `2px ${activity ? 'solid' : 'dashed'} ${isOver 
-          ? `var(--color-accent, ${theme.colors.accent})` 
-          : activity 
-            ? dayNightColors.border
-            : `var(--color-border, ${theme.colors.border})`}`,
-        boxShadow: activity 
-          ? dayNightColors.shadow
-          : isOver
+        border: `2px ${activity ? 'solid' : 'dashed'} ${
+          isOver && canDrop
+            ? `var(--color-accent, ${theme.colors.accent})`
+            : activity
+              ? activity.completed
+                ? `var(--color-primary, ${theme.colors.primary})50`
+                : dayNightColors.border
+              : `var(--color-border, ${theme.colors.border})`
+        }`,
+        boxShadow: activity
+          ? activity.completed
+            ? `0 4px 16px var(--color-primary, ${theme.colors.primary})20`
+            : dayNightColors.shadow
+          : isOver && canDrop
             ? `0 8px 32px var(--color-accent, ${theme.colors.accent})30`
             : '0 2px 8px rgba(0,0,0,0.05)',
-        transform: isOver ? 'scale(1.02)' : 'scale(1)'
+        transform: isOver && canDrop ? 'scale(1.02)' : 'scale(1)',
+        opacity: isOver && !canDrop ? 0.5 : 1
       }}
     >
-      {/* Day/Night Background Animation */}
+      {/* Background Animations */}
       <DayNightBackground timeSlot={timeSlot.label} className="opacity-40" />
-      
-      {/* Weather Animation */}
       <WeatherAnimation weather={weather} className="opacity-60" />
-      
+
       {/* Time Label */}
       <div className="flex items-center gap-2 mb-2 relative z-10">
-        <Clock className="w-4 h-4" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }} />
-        <span className="text-sm font-medium" style={{ color: `var(--color-text, ${theme.colors.text})` }}>{timeSlot.label}</span>
+        <Clock className="w-4 h-4 transition-colors duration-300" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }} />
+        <span className="text-sm font-medium transition-colors duration-300" style={{ color: `var(--color-text, ${theme.colors.text})` }}>
+          {timeSlot.label}
+        </span>
+        {isOccupied && !activity && (
+          <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600">
+            Blocked
+          </span>
+        )}
       </div>
 
+      {/* Activity Content */}
       {activity ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -104,50 +112,89 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
           exit={{ opacity: 0, scale: 0.9 }}
           className="relative"
         >
-          <div
-            className="p-4 rounded-xl shadow-lg border backdrop-blur-sm hover:shadow-xl transition-all duration-300"
-            style={{
-              background: `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})95, var(--color-primary, ${theme.colors.primary})08)`,
-              borderColor: `var(--color-primary, ${theme.colors.primary})40`,
-              boxShadow: `0 8px 32px var(--color-primary, ${theme.colors.primary})15, 0 4px 16px rgba(0,0,0,0.1)`
-            }}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="font-medium text-sm mb-1" style={{ color: `var(--color-text, ${theme.colors.text})` }}>
-                  {activity.title}
-                </h4>
-                <p className="text-xs" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }}>
-                  {activity.description}
+          {activity.completed ? (
+            // Blocked slot display
+            <div
+              className="p-3 rounded-xl border-2 border-dashed opacity-75"
+              style={{
+                background: `${theme.colors.primary}10`,
+                borderColor: `${theme.colors.primary}30`
+              }}
+            >
+              <div className="text-center">
+                <p className="text-sm font-medium" style={{ color: theme.colors.text }}>
+                  {activity.name} (continued)
                 </p>
-                {activity.duration && (
-                  <div className="flex items-center gap-1 mt-2">
-                    <Clock className="w-3 h-3" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }} />
-                    <span className="text-xs" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }}>
-                      {activity.duration} min
-                    </span>
-                  </div>
-                )}
+                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                  Part of multi-hour activity
+                </p>
               </div>
-              <button
-                onClick={() => onRemoveActivity(activity.id)}
-                className="p-2 rounded-full transition-all duration-200 hover:scale-110"
-                style={{
-                  background: `linear-gradient(135deg, #ff4757, #ff3742)`,
-                  boxShadow: '0 4px 12px rgba(255, 71, 87, 0.3)'
-                }}
-              >
-                <X className="w-4 h-4 text-white" />
-              </button>
             </div>
-          </div>
+          ) : (
+            // Main activity display
+            <div
+              className="p-4 rounded-xl shadow-lg border backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer group"
+              style={{
+                background: `linear-gradient(135deg, ${theme.colors.surface}95, ${theme.colors.primary}15)`,
+                borderColor: `${theme.colors.primary}50`,
+                boxShadow: `0 8px 32px ${theme.colors.primary}20, 0 4px 16px rgba(0,0,0,0.1)`
+              }}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="font-medium text-sm mb-1" style={{ color: theme.colors.text }}>
+                    {activity.name}
+                  </h4>
+                  <p className="text-xs mb-2" style={{ color: theme.colors.textSecondary }}>
+                    {activity.description}
+                  </p>
+                  <div className="flex items-center gap-4 text-xs" style={{ color: theme.colors.textSecondary }}>
+                    {activity.duration && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>{Math.round(activity.duration / 60)}h {activity.duration % 60}m</span>
+                      </div>
+                    )}
+                    {activity.cost !== undefined && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-green-600">${activity.cost}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRemoveActivity(activity.id)
+                  }}
+                  className="p-2 rounded-full transition-all duration-200 hover:scale-110 opacity-0 group-hover:opacity-100"
+                  style={{
+                    background: 'linear-gradient(135deg, #ff4757, #ff3742)',
+                    boxShadow: '0 4px 12px rgba(255, 71, 87, 0.3)'
+                  }}
+                >
+                  <X className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
       ) : (
-        <div className="flex items-center justify-center h-12 transition-all duration-200" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }}>
-          <div className="text-center">
-            <Plus className="w-5 h-5 mx-auto mb-1 opacity-60" />
-            <span className="text-xs opacity-80">Drop activity here</span>
-          </div>
+        // Empty slot
+        <div 
+          className="flex items-center justify-center h-16 transition-all duration-200" 
+          style={{ color: theme.colors.textSecondary }}
+        >
+          {isOccupied ? (
+            <div className="text-center">
+              <span className="text-xs opacity-60">Slot Occupied</span>
+            </div>
+          ) : (
+            <div className="text-center">
+              <Plus className="w-5 h-5 mx-auto mb-1 opacity-60" />
+              <span className="text-xs opacity-80">Drop activity here</span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -158,6 +205,7 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   scheduledActivities,
   onAddActivity,
   onRemoveActivity,
+  // onMoveActivity,
   selectedDays
 }) => {
   const { currentTheme } = useTheme()
@@ -167,10 +215,21 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
     ? TIME_SLOTS 
     : TIME_SLOTS.filter(slot => slot.period === selectedTimeRange)
 
+  // Helper functions
   const getActivityForSlot = (timeSlot: string, day: 'saturday' | 'sunday') => {
-    return scheduledActivities?.find(activity => 
-      activity.timeSlot === timeSlot && activity.day === day
+    return scheduledActivities.find(activity => 
+      activity.startTime === timeSlot && activity.day === day
     )
+  }
+
+  const isSlotOccupied = (timeSlot: string, day: 'saturday' | 'sunday') => {
+    return scheduledActivities.some(activity => 
+      activity.startTime === timeSlot && activity.day === day
+    )
+  }
+
+  const getActivitiesCount = (day: 'saturday' | 'sunday') => {
+    return scheduledActivities.filter(a => a.day === day && !a.completed).length
   }
 
   const activeDays = selectedDays.filter(day => day === 'saturday' || day === 'sunday') as ('saturday' | 'sunday')[]
@@ -179,13 +238,13 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
     <div className="space-y-6">
       {/* Time Filter */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-sm font-medium" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
+        <span className="text-sm font-medium transition-colors duration-300" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
           Show:
         </span>
-        {['all', 'morning', 'afternoon', 'evening', 'night'].map((period) => (
+        {(['all', 'morning', 'afternoon', 'evening', 'night'] as const).map((period) => (
           <button
             key={period}
-            onClick={() => setSelectedTimeRange(period as any)}
+            onClick={() => setSelectedTimeRange(period)}
             className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 backdrop-blur-sm hover:scale-105"
             style={{
               background: selectedTimeRange === period 
@@ -211,35 +270,39 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
       <div className="grid gap-6">
         {activeDays.map((day) => (
           <div key={day} className="space-y-4">
-            {/* Day Header with Weather Animation */}
-            <div className="relative flex items-center gap-4 p-4 rounded-xl backdrop-blur-sm overflow-hidden" style={{
-              background: `linear-gradient(135deg, var(--color-surface, ${currentTheme.colors.surface})90, var(--color-primary, ${currentTheme.colors.primary})10)`,
-              border: `1px solid var(--color-border, ${currentTheme.colors.border})`,
-              boxShadow: `0 4px 16px var(--color-primary, ${currentTheme.colors.primary})10`
-            }}>
-              {/* Day-level Weather Animation */}
+            {/* Day Header */}
+            <div 
+              className="relative flex items-center gap-4 p-4 rounded-xl backdrop-blur-sm overflow-hidden transition-all duration-300" 
+              style={{
+                background: `linear-gradient(135deg, var(--color-surface, ${currentTheme.colors.surface})90, var(--color-primary, ${currentTheme.colors.primary})10)`,
+                border: `1px solid var(--color-border, ${currentTheme.colors.border})`,
+                boxShadow: `0 4px 16px var(--color-primary, ${currentTheme.colors.primary})10`
+              }}
+            >
               <WeatherAnimation weather={getDayWeather(day)} className="opacity-30" />
               
               <div
-                className="w-6 h-6 rounded-full shadow-lg relative z-10"
+                className="w-6 h-6 rounded-full shadow-lg relative z-10 transition-all duration-300"
                 style={{ 
                   background: `linear-gradient(135deg, var(--color-primary, ${currentTheme.colors.primary}), var(--color-secondary, ${currentTheme.colors.secondary}))`,
                   boxShadow: `0 4px 12px var(--color-primary, ${currentTheme.colors.primary})40`
                 }}
               />
-              <h3 className="text-xl font-bold capitalize relative z-10" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
+              <h3 className="text-xl font-bold capitalize relative z-10 transition-colors duration-300" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
                 {day}
               </h3>
-              <div className="px-3 py-1 rounded-full text-sm font-medium relative z-10" style={{ 
-                background: `var(--color-accent, ${currentTheme.colors.accent})20`,
-                color: `var(--color-accent, ${currentTheme.colors.accent})`
-              }}>
-                {scheduledActivities?.filter(a => a.day === day).length || 0} activities
+              <div 
+                className="px-3 py-1 rounded-full text-sm font-medium relative z-10 transition-all duration-300" 
+                style={{ 
+                  background: `var(--color-accent, ${currentTheme.colors.accent})20`,
+                  color: `var(--color-accent, ${currentTheme.colors.accent})`
+                }}
+              >
+                {getActivitiesCount(day)} activities
               </div>
               
-              {/* Weather indicator */}
               <div className="ml-auto flex items-center gap-2 relative z-10">
-                <span className="text-sm font-medium" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
+                <span className="text-sm font-medium transition-colors duration-300" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
                   {getDayWeather(day) === 'sunny' && '☀️ Sunny'}
                   {getDayWeather(day) === 'rainy' && '🌧️ Rainy'}
                   {getDayWeather(day) === 'snowy' && '❄️ Snowy'}
@@ -263,6 +326,7 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
                       timeSlot={timeSlot}
                       day={day}
                       activity={getActivityForSlot(timeSlot.id, day)}
+                      isOccupied={isSlotOccupied(timeSlot.id, day)}
                       onAddActivity={onAddActivity}
                       onRemoveActivity={onRemoveActivity}
                       theme={currentTheme}
@@ -278,14 +342,16 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
       {/* Empty State */}
       {activeDays.length === 0 && (
         <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" 
-               style={{ backgroundColor: currentTheme.colors.border }}>
-            <Clock className="w-8 h-8" style={{ color: currentTheme.colors.textSecondary }} />
+          <div 
+            className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center transition-colors duration-300" 
+            style={{ backgroundColor: `var(--color-border, ${currentTheme.colors.border})` }}
+          >
+            <Clock className="w-8 h-8 transition-colors duration-300" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }} />
           </div>
-          <h3 className="text-lg font-medium mb-2" style={{ color: currentTheme.colors.text }}>
+          <h3 className="text-lg font-medium mb-2 transition-colors duration-300" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
             No days selected
           </h3>
-          <p style={{ color: currentTheme.colors.textSecondary }}>
+          <p className="transition-colors duration-300" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
             Select Saturday or Sunday to start planning your weekend
           </p>
         </div>

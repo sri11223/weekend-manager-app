@@ -173,9 +173,9 @@ export const Sidebar: React.FC = () => {
       {/* Weekend Theme Selector */}
       <div className="p-4 border-b border-gray-200">
         <WeekendThemeSelector 
-          selectedTheme={selectedTheme}
+          selectedTheme={selectedTheme?.id || null}
           onThemeSelect={setTheme}
-          onThemeClear={clearTheme}
+          onClearTheme={clearTheme}
         />
       </div>
 
@@ -183,7 +183,13 @@ export const Sidebar: React.FC = () => {
       <div className="p-4 border-b border-gray-200">
         <MoodVibeTracker 
           selectedVibes={selectedVibes}
-          onVibesChange={setSelectedVibes}
+          onVibeToggle={(vibe) => {
+            setSelectedVibes(prev => 
+              prev.includes(vibe) 
+                ? prev.filter(v => v !== vibe)
+                : [...prev, vibe]
+            )
+          }}
         />
       </div>
 

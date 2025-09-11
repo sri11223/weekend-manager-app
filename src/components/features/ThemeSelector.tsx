@@ -2,11 +2,11 @@ import React, { useState } from 'react'
 import { Palette, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from '../../hooks/useTheme'
-import { MoodTheme } from '../../types/theme'
+// import { MoodTheme } from '../../types/theme'
 
-interface ThemeSelectorProps {
-  onClose?: () => void
-}
+// interface ThemeSelectorProps {
+//   onClose?: () => void
+// }
 
 const ThemeSelector: React.FC = () => {
   const { currentTheme, changeTheme, availableThemes, forceRender } = useTheme()

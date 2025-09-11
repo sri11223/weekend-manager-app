@@ -9,6 +9,11 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   selected?: boolean
   loading?: boolean
   as?: 'div' | 'article' | 'section'
+  onDrag?: React.DragEventHandler<HTMLDivElement>
+  onDragStart?: React.DragEventHandler<HTMLDivElement>
+  onDragEnd?: React.DragEventHandler<HTMLDivElement>
+  onAnimationStart?: React.AnimationEventHandler<HTMLDivElement>
+  onAnimationEnd?: React.AnimationEventHandler<HTMLDivElement>
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -20,6 +25,11 @@ export const Card: React.FC<CardProps> = ({
   as: Component = 'div',
   className,
   onClick,
+  onDrag,
+  onDragStart,
+  onDragEnd,
+  onAnimationStart,
+  onAnimationEnd,
   ...props
 }) => {
   const isInteractive = !!onClick || variant === 'interactive'
@@ -65,7 +75,7 @@ export const Card: React.FC<CardProps> = ({
       onKeyDown={isInteractive ? (e) => {
         if ((e.key === 'Enter' || e.key === ' ') && onClick) {
           e.preventDefault()
-          onClick()
+          onClick({} as any)
         }
       } : undefined}
       aria-pressed={selected}

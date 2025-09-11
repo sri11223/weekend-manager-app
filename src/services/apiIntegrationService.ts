@@ -96,7 +96,7 @@ class EntertainmentService {
 
 // Restaurant/Food API Service (using a free API)
 class FoodService {
-  async getRestaurantsByLocation(lat: number, lon: number): Promise<any[]> {
+  async getRestaurantsByLocation(_lat: number, _lon: number): Promise<any[]> {
     try {
       // Fallback to mock restaurants due to CORS issues with Overpass API
       const mockRestaurants = [
