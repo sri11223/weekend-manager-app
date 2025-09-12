@@ -36,8 +36,7 @@ const LongWeekendBanner: React.FC<LongWeekendBannerProps> = ({ onClose }) => {
       const holidaysResult = await apiManager.getUpcomingHolidays('IN', 3)
       setUpcomingHolidays(holidaysResult)
       
-      console.log('🏖️ Long weekend check:', longWeekendResult)
-      console.log('📅 Upcoming holidays:', holidaysResult)
+    
       
     } catch (error) {
       console.error('Holiday check failed:', error)

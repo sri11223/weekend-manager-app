@@ -30,14 +30,12 @@ class GroqAIService {
   private apiKey: string
   private baseUrl = 'https://api.groq.com/openai/v1/chat/completions'
   private cache = new Map<string, Activity[]>()
-  private readonly CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
+  // private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes - unused
   
-  // ✅ UPDATED MODELS (current working models as of 2025)
+  // ✅ WORKING MODELS ONLY (removed deprecated ones)
   private models = [
-    'llama-3.1-70b-versatile',  // Primary model
-    'llama-3.1-8b-instant',     // Backup model
-    'mixtral-8x7b-32768',       // Alternative backup
-    'gemma2-9b-it'              // Final fallback
+    'gemma2-9b-it',             // Primary - working model
+    'llama3-8b-8192'            // Backup - if available
   ]
 
   constructor() {
@@ -441,28 +439,31 @@ Return ONLY a JSON array with this exact format:
     return this.formatAndValidateActivities(mockActivities, category)
   }
 
-  // Generate activities for all categories
+  // Generate activities for all categories using mock data
   async generateAllCategories(context: AIContext): Promise<Record<string, Activity[]>> {
-    const categories = ['movies', 'food', 'games', 'outdoor', 'social', 'trip-planning']
+    // Import mock data service
+    const { MockActivityService } = await import('../data/mockActivities')
+    const { getThemeCategoriesConfig } = await import('../config/themeCategories')
+    
+    const themeCategories = getThemeCategoriesConfig(context.theme)
+    const categories = themeCategories.map(cat => cat.id)
+    
     const results: Record<string, Activity[]> = {}
 
-    console.log(`🎭 Generating all categories for theme: ${context.theme}`, context)
+    console.log(`🎭 Loading mock activities for theme: ${context.theme}`, categories)
 
-    const promises = categories.map(async (category) => {
-      const activities = await this.generateActivities({
-        category,
-        count: context.budget ? 8 : 6,
-        context
-      })
-      return { category, activities }
+    // Load mock activities for each category
+    categories.forEach(category => {
+      const mockActivities = MockActivityService.getActivitiesByThemeAndCategory(context.theme, category)
+      if (mockActivities.length > 0) {
+        results[category] = mockActivities
+      } else {
+        // Fallback to empty array if no mock data
+        results[category] = []
+      }
     })
 
-    const resolvedResults = await Promise.all(promises)
-    resolvedResults.forEach(({ category, activities }) => {
-      results[category] = activities
-    })
-
-    console.log(`🎯 Generated activities for all categories with ${context.theme} theme`)
+    console.log(`🎯 Loaded mock activities for all categories with ${context.theme} theme`)
     return results
   }
 

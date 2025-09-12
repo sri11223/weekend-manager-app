@@ -76,27 +76,27 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
       className="relative min-h-[100px] p-4 rounded-xl transition-all duration-300 backdrop-blur-sm overflow-hidden"
       style={{
         background: isOver && canDrop
-          ? `linear-gradient(135deg, var(--color-accent, ${theme.colors.accent})15, var(--color-accent, ${theme.colors.accent})25)`
+          ? `linear-gradient(135deg, ${theme.colors.accent}15, ${theme.colors.accent}25)`
           : activity
             ? activity.isBlocked
-              ? `linear-gradient(135deg, var(--color-primary, ${theme.colors.primary})10, var(--color-primary, ${theme.colors.primary})20)`
+              ? `linear-gradient(135deg, ${theme.colors.primary}10, ${theme.colors.primary}20)`
               : dayNightColors.background
-            : `linear-gradient(135deg, var(--color-surface, ${theme.colors.surface})80, ${dayNightColors.overlay})`,
+            : `linear-gradient(135deg, ${theme.colors.surface}80, ${dayNightColors.overlay})`,
         border: `2px ${activity ? 'solid' : 'dashed'} ${
           isOver && canDrop
-            ? `var(--color-accent, ${theme.colors.accent})`
+            ? theme.colors.accent
             : activity
               ? activity.isBlocked
-                ? `var(--color-primary, ${theme.colors.primary})50`
+                ? `${theme.colors.primary}50`
                 : dayNightColors.border
-              : `var(--color-border, ${theme.colors.border})`
+              : theme.colors.border
         }`,
         boxShadow: activity
           ? activity.isBlocked
-            ? `0 4px 16px var(--color-primary, ${theme.colors.primary})20`
+            ? `0 4px 16px ${theme.colors.primary}20`
             : dayNightColors.shadow
           : isOver && canDrop
-            ? `0 8px 32px var(--color-accent, ${theme.colors.accent})30`
+            ? `0 8px 32px ${theme.colors.accent}30`
             : '0 2px 8px rgba(0,0,0,0.05)',
         transform: isOver && canDrop ? 'scale(1.02)' : 'scale(1)',
         opacity: isOver && !canDrop ? 0.5 : 1
@@ -108,8 +108,8 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
 
       {/* Time Label */}
       <div className="flex items-center gap-2 mb-2 relative z-10">
-        <Clock className="w-4 h-4 transition-colors duration-300" style={{ color: `var(--color-text-secondary, ${theme.colors.textSecondary})` }} />
-        <span className="text-sm font-medium transition-colors duration-300" style={{ color: `var(--color-text, ${theme.colors.text})` }}>
+        <Clock className="w-4 h-4 transition-colors duration-300" style={{ color: theme.colors.textSecondary }} />
+        <span className="text-sm font-medium transition-colors duration-300" style={{ color: theme.colors.text }}>
           {timeSlot.label}
         </span>
         {isOccupied && !activity && (
@@ -253,7 +253,7 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
     <div className="space-y-6">
       {/* Time Filter */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-sm font-medium transition-colors duration-300" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
+        <span className="text-sm font-medium transition-colors duration-300" style={{ color: currentTheme.colors.text }}>
           Show:
         </span>
         {(['all', 'morning', 'afternoon', 'evening', 'night'] as const).map((period) => (
@@ -263,16 +263,16 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
             className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 backdrop-blur-sm hover:scale-105"
             style={{
               background: selectedTimeRange === period 
-                ? `linear-gradient(135deg, var(--color-primary, ${currentTheme.colors.primary}), var(--color-secondary, ${currentTheme.colors.secondary}))`
-                : `var(--color-surface, ${currentTheme.colors.surface})80`,
+                ? `linear-gradient(135deg, ${currentTheme.colors.primary}, ${currentTheme.colors.secondary})`
+                : `${currentTheme.colors.surface}80`,
               color: selectedTimeRange === period 
                 ? 'white' 
-                : `var(--color-text-secondary, ${currentTheme.colors.textSecondary})`,
+                : currentTheme.colors.textSecondary,
               border: `1px solid ${selectedTimeRange === period 
-                ? `var(--color-primary, ${currentTheme.colors.primary})` 
-                : `var(--color-border, ${currentTheme.colors.border})`}`,
+                ? currentTheme.colors.primary
+                : currentTheme.colors.border}`,
               boxShadow: selectedTimeRange === period 
-                ? `0 4px 16px var(--color-primary, ${currentTheme.colors.primary})30`
+                ? `0 4px 16px ${currentTheme.colors.primary}30`
                 : '0 2px 8px rgba(0,0,0,0.05)'
             }}
           >
@@ -289,9 +289,9 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
             <div 
               className="relative flex items-center gap-4 p-4 rounded-xl backdrop-blur-sm overflow-hidden transition-all duration-300" 
               style={{
-                background: `linear-gradient(135deg, var(--color-surface, ${currentTheme.colors.surface})90, var(--color-primary, ${currentTheme.colors.primary})10)`,
-                border: `1px solid var(--color-border, ${currentTheme.colors.border})`,
-                boxShadow: `0 4px 16px var(--color-primary, ${currentTheme.colors.primary})10`
+                background: `linear-gradient(135deg, ${currentTheme.colors.surface}90, ${currentTheme.colors.primary}10)`,
+                border: `1px solid ${currentTheme.colors.border}`,
+                boxShadow: `0 4px 16px ${currentTheme.colors.primary}10`
               }}
             >
               <WeatherAnimation weather={getDayWeather(day)} className="opacity-30" />
@@ -299,25 +299,25 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
               <div
                 className="w-6 h-6 rounded-full shadow-lg relative z-10 transition-all duration-300"
                 style={{ 
-                  background: `linear-gradient(135deg, var(--color-primary, ${currentTheme.colors.primary}), var(--color-secondary, ${currentTheme.colors.secondary}))`,
-                  boxShadow: `0 4px 12px var(--color-primary, ${currentTheme.colors.primary})40`
+                  background: `linear-gradient(135deg, ${currentTheme.colors.primary}, ${currentTheme.colors.secondary})`,
+                  boxShadow: `0 4px 12px ${currentTheme.colors.primary}40`
                 }}
               />
-              <h3 className="text-xl font-bold capitalize relative z-10 transition-colors duration-300" style={{ color: `var(--color-text, ${currentTheme.colors.text})` }}>
+              <h3 className="text-xl font-bold capitalize relative z-10 transition-colors duration-300" style={{ color: currentTheme.colors.text }}>
                 {day}
               </h3>
               <div 
                 className="px-3 py-1 rounded-full text-sm font-medium relative z-10 transition-all duration-300" 
                 style={{ 
-                  background: `var(--color-accent, ${currentTheme.colors.accent})20`,
-                  color: `var(--color-accent, ${currentTheme.colors.accent})`
+                  background: `${currentTheme.colors.accent}20`,
+                  color: currentTheme.colors.accent
                 }}
               >
                 {getActivitiesCount(day)} activities
               </div>
               
               <div className="ml-auto flex items-center gap-2 relative z-10">
-                <span className="text-sm font-medium transition-colors duration-300" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
+                <span className="text-sm font-medium transition-colors duration-300" style={{ color: currentTheme.colors.textSecondary }}>
                   {getDayWeather(day) === 'sunny' && '☀️ Sunny'}
                   {getDayWeather(day) === 'rainy' && '🌧️ Rainy'}
                   {getDayWeather(day) === 'snowy' && '❄️ Snowy'}

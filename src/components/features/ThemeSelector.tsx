@@ -1,12 +1,8 @@
+// src/components/features/ThemeSelector.tsx - INSTANT THEME SELECTOR
 import React, { useState } from 'react'
 import { Palette, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from '../../hooks/useTheme'
-// import { MoodTheme } from '../../types/theme'
-
-// interface ThemeSelectorProps {
-//   onClose?: () => void
-// }
 
 const ThemeSelector: React.FC = () => {
   const { currentTheme, changeTheme, availableThemes, forceRender } = useTheme()
@@ -35,7 +31,7 @@ const ThemeSelector: React.FC = () => {
               className="fixed inset-0 z-40"
               onClick={() => setIsOpen(false)}
             />
-            
+
             {/* Theme Panel */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -47,7 +43,7 @@ const ThemeSelector: React.FC = () => {
               <h3 className="text-lg font-bold mb-4" style={{ color: currentTheme.colors.text }}>
                 Choose Your Mood
               </h3>
-              
+
               <div className="grid grid-cols-1 gap-3">
                 {availableThemes.map((theme) => (
                   <motion.button

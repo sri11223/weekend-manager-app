@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { Search, Film, Utensils, Gamepad2, MapPin, Users, Plane, Share2 } from 'lucide-react'
+// src/components/layout/MinimalLayout.tsx - COMPLETE FIX FOR ALL ISSUES
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { Search, Share2 } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
@@ -11,82 +12,239 @@ import LongWeekendBanner from '../features/LongWeekendBanner'
 import { ShareExportPanel } from '../features/ShareExportPanel'
 import { useTheme } from '../../hooks/useTheme'
 import { useScheduleStore } from '../../store/scheduleStore'
+import { mockActivitiesDatabase, MockActivityService } from '../../data/mockActivities'
 
-const CATEGORIES = [
-  { id: 'movies', name: 'Movies', icon: <Film className="w-4 h-4" />, color: 'bg-purple-500', count: 25 },
-  { id: 'food', name: 'Food', icon: <Utensils className="w-4 h-4" />, color: 'bg-orange-500', count: 18 },
-  { id: 'games', name: 'Games', icon: <Gamepad2 className="w-4 h-4" />, color: 'bg-blue-500', count: 15 },
-  { id: 'outdoor', name: 'Outdoor', icon: <MapPin className="w-4 h-4" />, color: 'bg-green-500', count: 12 },
-  { id: 'social', name: 'Social', icon: <Users className="w-4 h-4" />, color: 'bg-pink-500', count: 8 },
-  { id: 'trip-planning', name: 'Trips', icon: <Plane className="w-4 h-4" />, color: 'bg-cyan-500', count: 6 },
-]
+// Category Icons
+import { 
+  Mountain, Zap, Users, Gamepad2, UtensilsCrossed, Palette as PaletteIcon,
+  TreePine, Dumbbell, Car, Heart, Baby, BookOpen, Film, Sparkles, Target,
+  Coffee, Music, Camera, Brain, Home, Lightbulb, Brush, Pen, Activity,
+  Monitor, Mic, Compass, Waves, Camera as Photo, Clock
+} from 'lucide-react'
+
+const getCategoryIcon = (categoryKey: string) => {
+  const iconMap: { [key: string]: any } = {
+    outdoor: Mountain, sports: Dumbbell, travel: Car, games: Gamepad2, food: UtensilsCrossed,
+    social: Users, wellness: Sparkles, nature: TreePine, books: BookOpen, movies: Film,
+    art: PaletteIcon, music: Music, dance: Users, creative: PaletteIcon, entertainment: Film,
+    culture: Camera, learning: BookOpen, indoor: Home, visual_arts: Brush, writing: Pen,
+    movement: Activity, crafts: PaletteIcon, digital_creation: Monitor, performance: Mic,
+    meditation: Target, study: BookOpen, brain_training: Brain, environment: TreePine, reading: BookOpen,
+  }
+  return iconMap[categoryKey] || PaletteIcon
+}
 
 export const MinimalLayout: React.FC = () => {
-  const { currentTheme, themeId, forceRender, isThemeReady } = useTheme()
+  const { currentTheme, themeId, isThemeReady, themeChangeTimestamp } = useTheme()
   const { 
     scheduledActivities, 
     addActivity, 
     removeActivity, 
-    moveActivity,
-    clearAllActivities 
+    clearAllActivities
   } = useScheduleStore()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activePanel, setActivePanel] = useState<string | null>(null)
   const [showShareExport, setShowShareExport] = useState(false)
-  
-  // Debug state
-  console.log('MinimalLayout render - showShareExport:', showShareExport)
-  // const [showCommunity, setShowCommunity] = useState(false)
-  // const [showBudget, setShowBudget] = useState(false)
-  // const [showSocial, setShowSocial] = useState(false)
-  // const [showLongWeekend, setShowLongWeekend] = useState(false)
   const [selectedDays] = useState<('saturday' | 'sunday')[]>(['saturday', 'sunday'])
 
-  // Force re-render when theme changes
+  // ✅ FORCE COMPLETE RE-RENDERS
   const [renderKey, setRenderKey] = useState(0)
+  const [themeDisplayName, setThemeDisplayName] = useState('')
+  const previousThemeId = useRef<string>('')
+  const headerRef = useRef<HTMLElement>(null)
+  const navRef = useRef<HTMLElement>(null)
 
-  useEffect(() => {
-    setRenderKey(prev => prev + 1)
-  }, [themeId, currentTheme])
+  // ✅ CATEGORIES STATE
+  const [currentCategories, setCurrentCategories] = useState<any[]>([])
 
-  // Centralized activity management
-  const handleAddActivity = (activity: any, timeSlot: string, day: 'saturday' | 'sunday') => {
-    const success = addActivity(activity, timeSlot, day)
-    if (!success) {
-      // Show error notification
-      console.log('⚠️ Failed to add activity - slot may be occupied')
+  // ✅ GET PROPER THEME DISPLAY NAME
+  const getThemeDisplayName = useCallback((themeIdValue: string) => {
+    const themeMap = {
+      adventurous: 'Adventure Ready',
+      relaxed: 'Calm & Peaceful', 
+      energetic: 'Energetic Vibes',
+      romantic: 'Romantic Mood',
+      focus: 'Focus Mode',
+      creative_flow: 'Creative Flow'
     }
-    return success
-  }
+    return themeMap[themeIdValue as keyof typeof themeMap] || 'Unknown Theme'
+  }, [])
 
-  const handleRemoveActivity = (activityId: string) => {
+  // ✅ FORCE IMMEDIATE HEADER COLOR UPDATE
+  const updateHeaderColors = useCallback(() => {
+    if (!currentTheme || !headerRef.current) return
+
+    console.log(`🎨 UPDATING header colors for: ${currentTheme.name}`)
+
+    const header = headerRef.current
+    header.style.background = currentTheme.colors.gradient
+    header.style.borderColor = currentTheme.colors.border
+    header.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+
+    // Also update all child elements
+    const searchInput = header.querySelector('input')
+    if (searchInput) {
+      searchInput.style.backgroundColor = 'rgba(255,255,255,0.2)'
+      searchInput.style.borderColor = 'rgba(255,255,255,0.3)'
+      searchInput.style.color = 'white'
+    }
+
+    // Force immediate repaint
+    header.offsetHeight
+  }, [currentTheme])
+
+  // ✅ FORCE IMMEDIATE NAV COLOR UPDATE  
+  const updateNavColors = useCallback(() => {
+    if (!currentTheme || !navRef.current) return
+
+    console.log(`🎨 UPDATING nav colors for: ${currentTheme.name}`)
+
+    const nav = navRef.current
+    nav.style.backgroundColor = currentTheme.colors.surface
+    nav.style.borderColor = currentTheme.colors.border
+    nav.style.color = currentTheme.colors.text
+    nav.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+
+    // Force immediate repaint
+    nav.offsetHeight
+  }, [currentTheme])
+
+  // ✅ REBUILD CATEGORIES WITH PROPER THEME MAPPING
+  const rebuildCategories = useCallback((newThemeId: string) => {
+    console.log(`🔄 REBUILDING categories for theme: ${newThemeId}`)
+
+    if (!newThemeId || !mockActivitiesDatabase[newThemeId as keyof typeof mockActivitiesDatabase]) {
+      console.warn(`❌ Theme ${newThemeId} not found`)
+      setCurrentCategories([])
+      return
+    }
+
+    try {
+      const categories = MockActivityService.getCategoriesForTheme(newThemeId)
+
+      const formattedCategories = categories.map((categoryKey) => {
+        const IconComponent = getCategoryIcon(categoryKey)
+        const count = MockActivityService.getCategoryCount(newThemeId, categoryKey)
+
+        return {
+          id: categoryKey,
+          name: categoryKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          description: `${categoryKey.replace(/_/g, ' ')} activities for ${newThemeId} theme`,
+          icon: IconComponent,
+          count: count,
+        }
+      })
+
+      console.log(`✅ Categories REBUILT for ${newThemeId}:`, formattedCategories.length)
+      setCurrentCategories(formattedCategories)
+
+      // Update theme display name
+      const displayName = getThemeDisplayName(newThemeId)
+      setThemeDisplayName(displayName)
+      console.log(`📝 Theme display name updated to: ${displayName}`)
+
+      setRenderKey(prev => prev + 1)
+
+    } catch (error) {
+      console.error('❌ Error rebuilding categories:', error)
+      setCurrentCategories([])
+    }
+  }, [getThemeDisplayName])
+
+  // ✅ IMMEDIATE THEME CHANGE DETECTION
+  useEffect(() => {
+    if (themeId && themeId !== previousThemeId.current) {
+      console.log(`🎨 THEME CHANGED: ${previousThemeId.current} → ${themeId}`)
+      previousThemeId.current = themeId
+
+      // Update everything immediately
+      rebuildCategories(themeId)
+      setActivePanel(null)
+
+      // Force color updates after short delays
+      setTimeout(() => updateHeaderColors(), 0)
+      setTimeout(() => updateNavColors(), 0)
+      setTimeout(() => updateHeaderColors(), 100)
+      setTimeout(() => updateNavColors(), 100)
+    }
+  }, [themeId, rebuildCategories, updateHeaderColors, updateNavColors])
+
+  // ✅ LISTEN FOR THEME EVENTS
+  useEffect(() => {
+    const handleThemeChange = (event: any) => {
+      const { themeId: newThemeId } = event.detail
+      console.log(`🔄 Theme change event: ${newThemeId}`)
+      rebuildCategories(newThemeId)
+      setTimeout(() => {
+        updateHeaderColors()
+        updateNavColors()
+      }, 0)
+    }
+
+    window.addEventListener('weekendly-theme-change', handleThemeChange)
+    window.addEventListener('weekendly-force-update', handleThemeChange)
+    window.addEventListener('weekendly-categories-update', handleThemeChange)
+
+    return () => {
+      window.removeEventListener('weekendly-theme-change', handleThemeChange)
+      window.removeEventListener('weekendly-force-update', handleThemeChange)
+      window.removeEventListener('weekendly-categories-update', handleThemeChange)
+    }
+  }, [rebuildCategories, updateHeaderColors, updateNavColors])
+
+  // ✅ INITIALIZE ON MOUNT
+  useEffect(() => {
+    if (themeId && currentCategories.length === 0) {
+      console.log(`🚀 INITIALIZING for theme: ${themeId}`)
+      rebuildCategories(themeId)
+      setTimeout(() => {
+        updateHeaderColors()
+        updateNavColors()
+      }, 0)
+    }
+  }, [themeId, currentCategories.length, rebuildCategories, updateHeaderColors, updateNavColors])
+
+  // ✅ UPDATE COLORS WHEN THEME IS READY
+  useEffect(() => {
+    if (isThemeReady && currentTheme) {
+      console.log(`✅ Theme ready, updating all colors for: ${currentTheme.name}`)
+      updateHeaderColors()
+      updateNavColors()
+    }
+  }, [isThemeReady, currentTheme, updateHeaderColors, updateNavColors])
+
+  // Event handlers
+  const handleAddActivity = useCallback((activity: any, timeSlot: string, day: 'saturday' | 'sunday') => {
+    return addActivity(activity, timeSlot, day)
+  }, [addActivity])
+
+  const handleRemoveActivity = useCallback((activityId: string) => {
     removeActivity(activityId)
-  }
+  }, [removeActivity])
 
-  const handleMoveActivity = (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday') => {
-    return moveActivity(activityId, newTimeSlot, newDay)
-  }
-
-  const handleCategoryClick = (categoryId: string) => {
+  const handleCategoryClick = useCallback((categoryId: string) => {
+    console.log(`🎯 Category clicked: ${categoryId}`)
     setActivePanel(activePanel === categoryId ? null : categoryId)
-  }
+  }, [activePanel])
 
-  const handleClosePanel = () => {
+  const handleClosePanel = useCallback(() => {
     setActivePanel(null)
-  }
+  }, [])
 
-  const handleClearAll = () => {
+  const handleClearAll = useCallback(() => {
     clearAllActivities()
-  }
+  }, [clearAllActivities])
 
-  // Show loading state while theme initializes
   if (!isThemeReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: currentTheme?.colors.background || '#f0f0f0' }}>
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading theme...</p>
+          <div className="w-8 h-8 border-4 rounded-full animate-spin mx-auto mb-4" style={{ 
+            borderColor: currentTheme?.colors.primary || '#000', 
+            borderTopColor: 'transparent' 
+          }}></div>
+          <p style={{ color: currentTheme?.colors.textSecondary || '#666' }}>Loading theme...</p>
         </div>
       </div>
     )
@@ -94,27 +252,42 @@ export const MinimalLayout: React.FC = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      {/* ✅ FORCE COMPLETE RE-RENDER ON THEME CHANGE */}
+      {/* ✅ MAIN CONTAINER WITH FORCE RE-RENDER */}
       <div 
-        key={`weekendly-${themeId}-${forceRender}-${renderKey}`}
-        className="min-h-screen transition-all duration-300" 
-        style={{ 
-          backgroundColor: `var(--color-background, ${currentTheme.colors.background})`,
-          color: `var(--color-text, ${currentTheme.colors.text})`
+        key={`layout-${themeId}-${renderKey}-${themeDisplayName}`}
+        className="min-h-screen"
+        style={{
+          backgroundColor: currentTheme.colors.background,
+          color: currentTheme.colors.text,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
-        {/* Header */}
+        {/* ✅ HEADER WITH FORCED COLOR UPDATES */}
         <header 
-          className="border-b px-6 py-4 transition-all duration-300"
-          style={{ 
-            background: `var(--color-primary, ${currentTheme.colors.primary})`,
-            borderColor: `var(--color-border, ${currentTheme.colors.border})`
+          ref={headerRef}
+          key={`header-${themeId}-${renderKey}`}
+          className="border-b px-6 py-4"
+          style={{
+            background: currentTheme.colors.gradient,
+            borderColor: currentTheme.colors.border,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-white">Weekendly</h1>
-              <div className="text-sm text-white/80">Plan your perfect weekend</div>
+
+              <div className="text-sm text-white/80">
+                Plan your perfect {themeDisplayName.toLowerCase()} weekend
+              </div>
+
+              {/* Live Status */}
+              <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-white/80">
+                  {currentCategories.reduce((sum, cat) => sum + cat.count, 0)} activities • Live
+                </span>
+              </div>
             </div>
 
             <div className="flex-1 max-w-md mx-8">
@@ -122,29 +295,28 @@ export const MinimalLayout: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
                 <input
                   type="text"
-                  placeholder="Search activities..."
+                  placeholder={`Search ${themeDisplayName.toLowerCase()} activities...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/20 text-white placeholder-white/60"
+                  className="w-full pl-10 pr-4 py-2 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/20 text-white placeholder-white/60 transition-all duration-300"
                 />
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
               <ThemeSelector />
+
               <button 
-                onClick={() => {
-                  console.log('Share button clicked!')
-                  setShowShareExport(true)
-                }}
-                className="flex items-center space-x-2 px-3 py-2 text-sm text-white/80 hover:text-white transition-colors hover:bg-white/10 rounded-lg"
+                onClick={() => setShowShareExport(true)}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-white/80 hover:text-white transition-all duration-300 hover:bg-white/10 rounded-lg"
               >
                 <Share2 className="w-4 h-4" />
                 <span>Share</span>
               </button>
+
               <button 
                 onClick={handleClearAll}
-                className="text-sm text-white/80 hover:text-white transition-colors"
+                className="text-sm text-white/80 hover:text-white transition-colors hover:bg-white/10 px-3 py-1 rounded"
               >
                 Clear All
               </button>
@@ -152,86 +324,146 @@ export const MinimalLayout: React.FC = () => {
           </div>
         </header>
 
-        {/* Category Navigation */}
+        {/* ✅ CATEGORIES NAV WITH FORCED COLOR UPDATES */}
         <nav 
-          className="border-b px-6 py-4 transition-all duration-300" 
-          style={{ 
-            backgroundColor: `var(--color-surface, ${currentTheme.colors.surface})`, 
-            borderColor: `var(--color-border, ${currentTheme.colors.border})`
+          ref={navRef}
+          key={`nav-${themeId}-${renderKey}-${themeDisplayName}`}
+          className="border-b px-6 py-4"
+          style={{
+            backgroundColor: currentTheme.colors.surface,
+            borderColor: currentTheme.colors.border,
+            color: currentTheme.colors.text,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
           <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center space-x-6">
-              {CATEGORIES.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.id)}
-                  className={`
-                    flex items-center space-x-2 px-4 py-2 rounded-lg transition-all hover:scale-105
-                    ${activePanel === category.id ? 'border-2' : 'hover:opacity-80'}
-                  `}
-                  style={{
-                    backgroundColor: activePanel === category.id 
-                      ? `var(--color-primary, ${currentTheme.colors.primary})20` 
-                      : 'transparent',
-                    borderColor: activePanel === category.id 
-                      ? `var(--color-primary, ${currentTheme.colors.primary})` 
-                      : 'transparent',
-                    color: activePanel === category.id 
-                      ? `var(--color-primary, ${currentTheme.colors.primary})` 
-                      : `var(--color-text, ${currentTheme.colors.text})`
-                  }}
-                >
-                  {category.icon}
-                  <span className="hidden md:inline">{category.name}</span>
-                  {category.count && (
-                    <span 
-                      className="text-xs px-2 py-1 rounded-full"
+            <div className="flex flex-col space-y-3">
+              {/* ✅ THEME STATUS WITH PROPER NAME */}
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <span 
+                    className="text-xs font-medium uppercase tracking-wider"
+                    style={{ color: currentTheme.colors.primary }}
+                  >
+                    {themeDisplayName} THEME
+                  </span>
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                  <span className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+                    Render: {renderKey} | Theme: {themeId}
+                  </span>
+                </div>
+
+                <div className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+                  {currentCategories.length} categories • {currentCategories.reduce((sum, cat) => sum + cat.count, 0)} activities
+                </div>
+              </div>
+
+              {/* ✅ CATEGORIES WITH THEME COLORS */}
+              <div 
+                key={`categories-${themeId}-${renderKey}`}
+                className="flex items-center space-x-4 overflow-x-auto pb-2"
+              >
+                {currentCategories.map((category) => {
+                  const IconComponent = category.icon
+                  const isActive = activePanel === category.id
+
+                  return (
+                    <button
+                      key={`${category.id}-${themeId}-${renderKey}`}
+                      onClick={() => handleCategoryClick(category.id)}
+                      className="group flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 whitespace-nowrap min-w-fit border"
                       style={{
-                        backgroundColor: `var(--color-border, ${currentTheme.colors.border})`,
-                        color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})`
+                        backgroundColor: isActive 
+                          ? currentTheme.colors.primary
+                          : 'transparent',
+                        borderColor: isActive 
+                          ? currentTheme.colors.primary
+                          : currentTheme.colors.border,
+                        color: isActive 
+                          ? 'white' 
+                          : currentTheme.colors.text,
+                        transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                        boxShadow: isActive ? `0 4px 12px ${currentTheme.colors.primary}30` : 'none'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = `${currentTheme.colors.primary}15`
+                          e.currentTarget.style.borderColor = currentTheme.colors.primary
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                          e.currentTarget.style.borderColor = currentTheme.colors.border
+                        }
                       }}
                     >
-                      {category.count}
-                    </span>
-                  )}
-                </button>
-              ))}
+                      <IconComponent className="w-4 h-4 flex-shrink-0" />
+
+                      <span className="hidden md:inline font-medium">
+                        {category.name}
+                      </span>
+
+                      <span 
+                        className="text-xs px-2 py-1 rounded-full font-bold flex-shrink-0"
+                        style={{
+                          backgroundColor: category.count > 0 
+                            ? (isActive ? 'rgba(255,255,255,0.25)' : `${currentTheme.colors.primary}20`)
+                            : currentTheme.colors.border,
+                          color: category.count > 0 
+                            ? (isActive ? 'white' : currentTheme.colors.primary)
+                            : currentTheme.colors.textSecondary,
+                        }}
+                      >
+                        {category.count}
+                      </span>
+                    </button>
+                  )
+                })}
+
+                {currentCategories.length === 0 && (
+                  <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+                    🔄 Loading categories for {themeId}...
+                  </div>
+                )}
+              </div>
             </div>
-            
-            <div className="text-sm" style={{ color: `var(--color-text-secondary, ${currentTheme.colors.textSecondary})` }}>
+
+            <div 
+              className="text-sm"
+              style={{ color: currentTheme.colors.textSecondary }}
+            >
               This Weekend - Sep 14-15, 2024 - {scheduledActivities.filter(a => !a.completed).length} activities planned
             </div>
           </div>
         </nav>
 
-        {/* Main Content */}
+        {/* ✅ MAIN CONTENT */}
         <main 
           className="flex-1 flex min-h-0"
           style={{ 
-            backgroundColor: `var(--color-background, ${currentTheme.colors.background})`,
-            color: `var(--color-text, ${currentTheme.colors.text})`
+            backgroundColor: currentTheme.colors.background,
+            color: currentTheme.colors.text,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
-          {/* Timeline Container */}
           <section className="flex-1 p-6 overflow-hidden">
-            {/* Long Weekend Banner */}
             <LongWeekendBanner />
             <EnhancedWeekendTimeline
-              scheduledActivities={scheduledActivities}
               onAddActivity={handleAddActivity}
               onRemoveActivity={handleRemoveActivity}
-              onMoveActivity={handleMoveActivity}
+              scheduledActivities={scheduledActivities}
               selectedDays={selectedDays}
             />
           </section>
 
-          {/* Right Sidebar - Plan Summary */}
           <aside 
-            className="w-80 border-l p-6 overflow-y-auto transition-all duration-300"
+            className="w-80 border-l p-6 overflow-y-auto"
             style={{ 
-              backgroundColor: `var(--color-surface, ${currentTheme.colors.surface})`,
-              borderColor: `var(--color-border, ${currentTheme.colors.border})`
+              backgroundColor: currentTheme.colors.surface,
+              borderColor: currentTheme.colors.border,
+              color: currentTheme.colors.text,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           >
             <PlanSummary 
@@ -241,7 +473,7 @@ export const MinimalLayout: React.FC = () => {
           </aside>
         </main>
 
-        {/* Floating Activity Browser */}
+        {/* Floating Browser */}
         <AnimatePresence mode="wait">
           {activePanel && (
             <FloatingActivityBrowser
@@ -252,18 +484,15 @@ export const MinimalLayout: React.FC = () => {
               onAddActivity={handleAddActivity}
               onRemoveActivity={handleRemoveActivity}
               scheduledActivities={scheduledActivities}
+              themeId={themeId}
             />
           )}
         </AnimatePresence>
 
-        {/* Share Export Panel */}
         <AnimatePresence>
           {showShareExport && (
             <ShareExportPanel
-              onClose={() => {
-                console.log('Closing ShareExportPanel')
-                setShowShareExport(false)
-              }}
+              onClose={() => setShowShareExport(false)}
             />
           )}
         </AnimatePresence>

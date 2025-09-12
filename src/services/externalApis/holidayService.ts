@@ -24,7 +24,7 @@ export class HolidayService extends BaseApiService {
   // Get India holidays - Using comprehensive fallback data
   async getIndiaHolidays(year?: number): Promise<ApiResponse<IndiaHoliday[]>> {
     try {
-      console.log(`🇮🇳 Getting India holidays for ${year || 2025}...`);
+      // console.log(`🇮🇳 Getting India holidays for ${year || 2025}...`); // Reduced logging
 
       // Simulate API delay for realism
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -61,7 +61,7 @@ export class HolidayService extends BaseApiService {
         return holidayDate >= now && holidayDate <= sixtyDaysLater;
       });
 
-      console.log(`📅 Found ${upcoming.length} upcoming India holidays`);
+      // console.log(`📅 Found ${upcoming.length} upcoming India holidays`); // Reduced logging
 
       return {
         success: true,
@@ -104,14 +104,15 @@ export class HolidayService extends BaseApiService {
 
       const isLong = weekendHolidays.length > 0;
 
-      console.log(isLong ? 
-        `🎉 Long weekend potential! Found ${weekendHolidays.length} holidays:` : 
-        '📅 Regular weekend ahead');
+      // Reduced console spam - only log if needed
+      // console.log(isLong ? 
+      //   `🎉 Long weekend potential! Found ${weekendHolidays.length} holidays:` : 
+      //   '📅 Regular weekend ahead');
 
-      if (isLong) {
-        weekendHolidays.forEach(holiday => 
-          console.log(`  • ${holiday.name} - ${holiday.date} (${holiday.day})`));
-      }
+      // if (isLong) {
+      //   weekendHolidays.forEach(holiday => 
+      //     console.log(`  • ${holiday.name} - ${holiday.date} (${holiday.day})`));
+      // }
 
       return {
         success: true,

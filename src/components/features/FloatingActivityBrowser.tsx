@@ -1,11 +1,11 @@
+// src/features/FloatingActivityBrowser.tsx - UPDATED WITH MOCK DATA
 import React, { useState, useEffect } from 'react'
 import { X, Search, Filter, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Activity } from './DraggableActivityCard'
-import { apiManager } from '../../services/externalApis'
 import DraggableActivityItem from './DraggableActivityItem'
-// import TimeSlotDropZone from './TimeSlotDropZone'
 import { useDrop } from 'react-dnd'
+import { mockActivitiesDatabase, MockActivityService } from '../../data/mockActivities'
 
 interface FloatingActivityBrowserProps {
   category: string
@@ -14,66 +14,223 @@ interface FloatingActivityBrowserProps {
   onAddActivity?: (activity: any, timeSlot: string, day: 'saturday' | 'sunday') => boolean
   onRemoveActivity?: (activityId: string) => void
   scheduledActivities?: any[]
+  themeId?: string
 }
 
-const CATEGORY_CONFIGS = {
-  entertainment: {
-    title: 'Movies & Shows',
-    description: 'Discover trending movies and shows',
-    color: 'purple',
-    bgGradient: 'from-purple-500 to-pink-500'
-  },
-  food: {
-    title: 'Food & Dining',
-    description: 'Find restaurants and food experiences',
-    color: 'orange',
-    bgGradient: 'from-orange-500 to-red-500'
-  },
-  gaming: {
-    title: 'Games & Entertainment',
-    description: 'Explore games and fun activities',
+// ✅ THEME-AWARE CATEGORY CONFIGS WITH MOCK DATA MAPPING
+const getThemeCategoryConfig = (category: string, themeId: string) => {
+  // Theme-based descriptions
+  const themeDescriptions = {
+    adventurous: 'thrilling and exciting',
+    relaxed: 'peaceful and calming', 
+    energetic: 'high-energy and dynamic',
+    romantic: 'intimate and romantic',
+    focus: 'focused and productive',
+    creative_flow: 'creative and inspiring'
+  }
+
+  const themePrefix = themeDescriptions[themeId as keyof typeof themeDescriptions] || 'amazing'
+
+  // Category configurations with theme awareness
+  const categoryConfigs: { [key: string]: any } = {
+    // Adventurous theme categories
+    outdoor: {
+      title: 'Outdoor Adventures',
+      description: `${themePrefix} outdoor experiences and nature activities`,
+      color: 'green',
+      bgGradient: 'from-green-500 to-teal-500'
+    },
+    sports: {
+      title: 'Sports & Fitness',
+      description: `${themePrefix} sports and fitness activities`,
+      color: 'red',
+      bgGradient: 'from-red-500 to-orange-500'
+    },
+    travel: {
+      title: 'Travel & Exploration',
+      description: `${themePrefix} travel and exploration experiences`,
+      color: 'blue',
+      bgGradient: 'from-blue-500 to-cyan-500'
+    },
+    games: {
+      title: 'Games & Entertainment',
+      description: `${themePrefix} gaming and entertainment activities`,
+      color: 'purple',
+      bgGradient: 'from-purple-500 to-indigo-500'
+    },
+    food: {
+      title: 'Food & Dining',
+      description: `${themePrefix} culinary experiences and dining`,
+      color: 'orange',
+      bgGradient: 'from-orange-500 to-red-500'
+    },
+    social: {
+      title: 'Social Activities',
+      description: `${themePrefix} social experiences and gatherings`,
+      color: 'pink',
+      bgGradient: 'from-pink-500 to-rose-500'
+    },
+
+    // Relaxed theme categories
+    wellness: {
+      title: 'Wellness & Health',
+      description: `${themePrefix} wellness and self-care activities`,
+      color: 'emerald',
+      bgGradient: 'from-emerald-500 to-teal-500'
+    },
+    nature: {
+      title: 'Nature & Outdoors',
+      description: `${themePrefix} nature and peaceful outdoor activities`,
+      color: 'green',
+      bgGradient: 'from-green-400 to-emerald-500'
+    },
+    books: {
+      title: 'Reading & Literature',
+      description: `${themePrefix} reading and literary activities`,
+      color: 'indigo',
+      bgGradient: 'from-indigo-500 to-purple-500'
+    },
+    movies: {
+      title: 'Movies & Shows',
+      description: `${themePrefix} movies and entertainment`,
+      color: 'purple',
+      bgGradient: 'from-purple-500 to-pink-500'
+    },
+    art: {
+      title: 'Arts & Crafts',
+      description: `${themePrefix} artistic and creative activities`,
+      color: 'pink',
+      bgGradient: 'from-pink-500 to-rose-500'
+    },
+
+    // Energetic theme categories
+    music: {
+      title: 'Music & Audio',
+      description: `${themePrefix} music and audio experiences`,
+      color: 'yellow',
+      bgGradient: 'from-yellow-500 to-orange-500'
+    },
+    dance: {
+      title: 'Dance & Movement',
+      description: `${themePrefix} dance and movement activities`,
+      color: 'pink',
+      bgGradient: 'from-pink-500 to-purple-500'
+    },
+
+    // Romantic theme categories
+    culture: {
+      title: 'Cultural Activities',
+      description: `${themePrefix} cultural and artistic experiences`,
+      color: 'indigo',
+      bgGradient: 'from-indigo-500 to-purple-500'
+    },
+
+    // Focus theme categories
+    meditation: {
+      title: 'Meditation & Mindfulness',
+      description: `${themePrefix} meditation and mindfulness practices`,
+      color: 'blue',
+      bgGradient: 'from-blue-500 to-indigo-500'
+    },
+    study: {
+      title: 'Study & Learning',
+      description: `${themePrefix} learning and educational activities`,
+      color: 'green',
+      bgGradient: 'from-green-500 to-teal-500'
+    },
+    brain_training: {
+      title: 'Brain Training',
+      description: `${themePrefix} cognitive and brain training exercises`,
+      color: 'purple',
+      bgGradient: 'from-purple-500 to-indigo-500'
+    },
+    environment: {
+      title: 'Environment & Workspace',
+      description: `${themePrefix} environment and workspace optimization`,
+      color: 'gray',
+      bgGradient: 'from-gray-500 to-slate-500'
+    },
+    reading: {
+      title: 'Reading & Research',
+      description: `${themePrefix} reading and research activities`,
+      color: 'blue',
+      bgGradient: 'from-blue-500 to-cyan-500'
+    },
+    writing: {
+      title: 'Writing & Documentation',
+      description: `${themePrefix} writing and documentation tasks`,
+      color: 'indigo',
+      bgGradient: 'from-indigo-500 to-purple-500'
+    },
+
+    // Creative Flow theme categories
+    visual_arts: {
+      title: 'Visual Arts',
+      description: `${themePrefix} visual arts and creative expression`,
+      color: 'purple',
+      bgGradient: 'from-purple-500 to-pink-500'
+    },
+    movement: {
+      title: 'Movement & Flow',
+      description: `${themePrefix} movement and physical expression`,
+      color: 'orange',
+      bgGradient: 'from-orange-500 to-red-500'
+    },
+    crafts: {
+      title: 'Crafts & Making',
+      description: `${themePrefix} crafts and hands-on creation`,
+      color: 'brown',
+      bgGradient: 'from-amber-600 to-orange-600'
+    },
+    digital_creation: {
+      title: 'Digital Creation',
+      description: `${themePrefix} digital arts and technology creation`,
+      color: 'blue',
+      bgGradient: 'from-blue-500 to-purple-500'
+    },
+    performance: {
+      title: 'Performance Arts',
+      description: `${themePrefix} performance and expressive arts`,
+      color: 'red',
+      bgGradient: 'from-red-500 to-pink-500'
+    },
+
+    // Generic fallback
+    entertainment: {
+      title: 'Entertainment',
+      description: `${themePrefix} entertainment activities`,
+      color: 'purple',
+      bgGradient: 'from-purple-500 to-pink-500'
+    },
+    learning: {
+      title: 'Learning & Education',
+      description: `${themePrefix} learning and educational experiences`,
+      color: 'blue',
+      bgGradient: 'from-blue-500 to-teal-500'
+    },
+    indoor: {
+      title: 'Indoor Activities',
+      description: `${themePrefix} indoor experiences and activities`,
+      color: 'gray',
+      bgGradient: 'from-gray-500 to-slate-500'
+    },
+    creative: {
+      title: 'Creative Activities',
+      description: `${themePrefix} creative and artistic pursuits`,
+      color: 'pink',
+      bgGradient: 'from-pink-500 to-purple-500'
+    }
+  }
+
+  return categoryConfigs[category] || {
+    title: category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    description: `${themePrefix} ${category} activities`,
     color: 'blue',
-    bgGradient: 'from-blue-500 to-indigo-500'
-  },
-  outdoor: {
-    title: 'Outdoor Adventures',
-    description: 'Get outside and explore nature',
-    color: 'green',
-    bgGradient: 'from-green-500 to-teal-500'
-  },
-  social: {
-    title: 'Social Activities',
-    description: 'Connect with friends and family',
-    color: 'pink',
-    bgGradient: 'from-pink-500 to-rose-500'
-  },
-  cultural: {
-    title: 'Cultural Activities',
-    description: 'Museums, galleries, and cultural experiences',
-    color: 'indigo',
-    bgGradient: 'from-indigo-500 to-purple-500'
-  },
-  wellness: {
-    title: 'Wellness & Health',
-    description: 'Relaxation and wellness activities',
-    color: 'emerald',
-    bgGradient: 'from-emerald-500 to-teal-500'
-  },
-  shopping: {
-    title: 'Shopping',
-    description: 'Shopping and retail experiences',
-    color: 'rose',
-    bgGradient: 'from-rose-500 to-pink-500'
-  },
-  'trip-planning': {
-    title: 'Trip Planning',
-    description: 'Weekend getaways and travel experiences',
-    color: 'cyan',
-    bgGradient: 'from-cyan-500 to-blue-500'
+    bgGradient: 'from-blue-500 to-purple-500'
   }
 }
 
-// ✅ UNIFIED TIME SLOT MAPPING - This is the key to synchronization!
+// ✅ UNIFIED TIME SLOT MAPPING
 const TIME_SLOT_MAP = [
   { display: '6:00 AM', id: '6am' },
   { display: '7:00 AM', id: '7am' },
@@ -101,7 +258,8 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   searchQuery = '',
   onAddActivity,
   onRemoveActivity,
-  scheduledActivities = []
+  scheduledActivities = [],
+  themeId = 'adventurous'
 }) => {
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
@@ -109,84 +267,76 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   const [filter, setFilter] = useState<'all' | 'free' | 'paid'>('all')
   const [selectedDay, setSelectedDay] = useState<'saturday' | 'sunday'>('saturday')
 
-  const config = CATEGORY_CONFIGS[category as keyof typeof CATEGORY_CONFIGS] || CATEGORY_CONFIGS.entertainment
+  // ✅ THEME-AWARE CONFIG
+  const config = getThemeCategoryConfig(category, themeId)
 
+  // ✅ LOAD ACTIVITIES FROM MOCK DATA
   useEffect(() => {
-    loadActivities()
-  }, [category, localSearch, filter])
+    loadMockActivities()
+  }, [category, themeId, localSearch, filter])
 
-  const loadActivities = async () => {
+  const loadMockActivities = () => {
     try {
       setLoading(true)
-      let apiResponse
+      console.log(`🎨 Loading ${category} activities from mock data for theme: ${themeId}`)
 
-      console.log('Loading activities for category:', category, 'search:', localSearch);
-      
-      if (localSearch.trim()) {
-        // Search across all activities using mixed results
-        apiResponse = await apiManager.getMixedActivities({ 
-          limit: 20,
-          location: { lat: 40.7128, lon: -74.0060 } // Default NYC
-        })
-      } else {
-        // Map UI category to API category
-        const categoryMap: Record<string, string> = {
-          'movies': 'entertainment',
-          'games': 'gaming',
-          'food': 'food',
-          'outdoor': 'outdoor',
-          'social': 'social',
-          'cultural': 'cultural',
-          'wellness': 'wellness',
-          'shopping': 'shopping'
-        };
-        
-        const apiCategory = categoryMap[category] || category;
-        console.log('Mapped category:', category, '->', apiCategory);
-        
-        // Load by category using new API manager
-        apiResponse = await apiManager.getActivitiesByCategory(apiCategory as any, { 
-          limit: 20,
-          location: { lat: 40.7128, lon: -74.0060 } // Default NYC
-        })
+      // ✅ GET ACTIVITIES FROM MOCK DATA
+      const mockActivities = MockActivityService.getActivitiesForCategory(themeId, category)
+
+      if (mockActivities.length === 0) {
+        console.warn(`❌ No activities found for category: ${category} in theme: ${themeId}`)
+        setActivities([])
+        setLoading(false)
+        return
       }
-      
-      console.log('API Response:', apiResponse);
 
-      // Convert API activities to component activities
-      const apiActivities = apiResponse.success && apiResponse.data ? apiResponse.data : []
-      let result: Activity[] = apiActivities.map(apiActivity => ({
-        id: apiActivity.id,
-        title: apiActivity.title,
-        description: apiActivity.description,
-        category: apiActivity.category,
-        duration: apiActivity.duration,
-        cost: apiActivity.price === 'free' ? 0 : apiActivity.price === 'low' ? 10 : apiActivity.price === 'medium' ? 25 : 50,
-        weatherPreference: 'any',
-        moodTags: apiActivity.mood || [],
-        image: apiActivity.image || '/api/placeholder/300/200',
-        rating: apiActivity.rating,
-        location: apiActivity.location?.name,
-        isApiGenerated: true,
-        apiSource: apiResponse.source
+      // ✅ CONVERT MOCK ACTIVITIES TO COMPONENT ACTIVITIES
+      let result: Activity[] = mockActivities.map(mockActivity => ({
+        id: mockActivity.id,
+        title: mockActivity.name,
+        description: mockActivity.description,
+        category: mockActivity.category,
+        duration: mockActivity.duration,
+        cost: typeof mockActivity.cost === 'string' ? 
+          (mockActivity.cost === 'free' ? 0 : 
+           mockActivity.cost === 'low' ? 15 : 
+           mockActivity.cost === 'medium' ? 35 : 65) : 
+          mockActivity.cost,
+        weatherPreference: mockActivity.weatherDependent ? 'outdoor' : 'any',
+        moodTags: [mockActivity.mood],
+        image: mockActivity.icon || '🎯',
+        rating: 4 + Math.random(),
+        location: 'Various locations',
+        isApiGenerated: false,
+        apiSource: 'mock-data',
+        // Additional mock data fields
+        difficulty: mockActivity.difficulty,
+        indoor: mockActivity.indoor,
+        tags: mockActivity.tags || []
       }))
 
-      // Apply filters
+      // ✅ APPLY SEARCH FILTER
+      if (localSearch.trim()) {
+        result = result.filter(activity =>
+          activity.title.toLowerCase().includes(localSearch.toLowerCase()) ||
+          activity.description.toLowerCase().includes(localSearch.toLowerCase()) ||
+          activity.tags.some(tag => tag.toLowerCase().includes(localSearch.toLowerCase())) ||
+          activity.moodTags.some(mood => mood.toLowerCase().includes(localSearch.toLowerCase()))
+        )
+      }
+
+      // ✅ APPLY COST FILTER
       if (filter === 'free') {
         result = result.filter(activity => activity.cost === 0)
       } else if (filter === 'paid') {
         result = result.filter(activity => activity.cost > 0)
       }
 
-      // Remove duplicates and limit results
-      const uniqueActivities = result.filter((activity, index, self) => 
-        index === self.findIndex(a => a.id === activity.id)
-      )
+      setActivities(result)
+      console.log(`✅ Loaded ${result.length} mock activities for ${category} (${themeId} theme)`)
 
-      setActivities(uniqueActivities.slice(0, 30))
     } catch (error) {
-      console.error('Failed to load activities:', error)
-      // Fallback to empty array on error
+      console.error('❌ Failed to load mock activities:', error)
       setActivities([])
     } finally {
       setLoading(false)
@@ -231,6 +381,8 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
     }
   }
 
+  // ✅ GET ACTIVITY COUNT FOR DISPLAY
+  const totalActivitiesCount = MockActivityService.getCategoryCount(themeId, category)
 
   return (
     <motion.div
@@ -247,12 +399,26 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
         className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[80vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* ✅ THEME-AWARE HEADER WITH MOCK DATA INFO */}
         <div className={`bg-gradient-to-r ${config.bgGradient} p-6 text-white`}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">{config.title}</h2>
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-2xl font-bold">{config.title}</h2>
+                <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
+                  {themeId.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ')} Theme
+                </span>
+                <span className="px-3 py-1 bg-white/25 rounded-full text-sm font-bold">
+                  {totalActivitiesCount} Activities
+                </span>
+              </div>
               <p className="text-white/80 mt-1">{config.description}</p>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm text-white/80">
+                  Loaded from comprehensive activity database
+                </span>
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -292,7 +458,7 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
 
         {/* Content with Timeline Sidebar */}
         <div className="flex h-[calc(100%-180px)]">
-          {/* Activities List */}
+          {/* ✅ ACTIVITIES LIST WITH MOCK DATA */}
           <div className="flex-1 p-6 overflow-y-auto">
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -310,62 +476,76 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
                   <Search className="w-8 h-8 text-gray-400" />
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No activities found</h3>
-                <p className="text-gray-500">Try adjusting your search or filters</p>
+                <p className="text-gray-500">
+                  Try adjusting your search or filters. 
+                  {totalActivitiesCount > 0 && ` There are ${totalActivitiesCount} activities available in this category.`}
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {activities.map((activity) => (
-                  <DraggableActivityItem
-                    key={activity.id}
-                    activity={activity}
-                    onQuickAdd={handleQuickAdd}
-                    scheduledActivities={scheduledActivities || []}
-                    onRemoveActivity={onRemoveActivity}
-                  />
-                ))}
+              <div className="space-y-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {config.title} ({activities.length} found)
+                  </h3>
+                  <div className="text-sm text-gray-500">
+                    From {themeId.replace(/_/g, ' ')} theme database
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {activities.map((activity) => (
+                    <DraggableActivityItem
+                      key={activity.id}
+                      activity={activity}
+                      onQuickAdd={handleQuickAdd}
+                      scheduledActivities={scheduledActivities || []}
+                      onRemoveActivity={onRemoveActivity}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
-          {/* ✅ ENHANCED VISUAL Timeline Sidebar */}
-          <div className="w-96 border-l border-white/20 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl p-6 overflow-y-auto">
+          {/* ✅ ENHANCED VISUAL TIMELINE SIDEBAR - KEEPING ORIGINAL DESIGN */}
+          <div className="w-96 border-l border-gray-200 bg-gradient-to-br from-gray-50 to-white p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 flex items-center justify-center shadow-xl">
+                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-r ${config.bgGradient} flex items-center justify-center shadow-xl`}>
                   <span className="text-white text-xl">⚡</span>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">Weekend Timeline</h3>
-                  <p className="text-white/70 text-sm">Drag & drop to schedule</p>
+                  <h3 className="text-xl font-bold text-gray-900">Weekend Timeline</h3>
+                  <p className="text-gray-600 text-sm">Drag & drop to schedule</p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-white/90 text-sm font-medium">
+                <div className="text-gray-900 text-sm font-medium">
                   {scheduledActivities?.filter(a => !a.isBlocked).length || 0} activities
                 </div>
-                <div className="text-white/60 text-xs">planned</div>
+                <div className="text-gray-500 text-xs">planned</div>
               </div>
             </div>
-            
+
             {/* Tab-based Timeline Selection */}
             <div className="space-y-6">
               {/* Day Tabs */}
-              <div className="flex bg-white/15 rounded-2xl p-2 backdrop-blur-sm border border-white/20">
+              <div className="flex bg-gray-100 rounded-2xl p-2">
                 <button
                   onClick={() => setSelectedDay('saturday')}
                   className={`flex-1 py-4 px-6 rounded-xl font-bold text-sm transition-all duration-300 ${
                     selectedDay === 'saturday'
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-xl transform scale-105 border-2 border-blue-300'
-                      : 'bg-gradient-to-r from-blue-400/30 to-blue-500/30 text-blue-100 hover:text-white hover:from-blue-400/50 hover:to-blue-500/50 hover:scale-102 border-2 border-blue-400/40'
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-xl transform scale-105'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white'
                   }`}
                 >
                   <div className="flex items-center justify-center gap-2">
-                    <div className={`w-3 h-3 rounded-full shadow-sm ${selectedDay === 'saturday' ? 'bg-white' : 'bg-blue-200'}`}></div>
+                    <div className={`w-3 h-3 rounded-full ${selectedDay === 'saturday' ? 'bg-white' : 'bg-blue-400'}`}></div>
                     Saturday
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                       selectedDay === 'saturday' 
                         ? 'bg-white/20 text-white' 
-                        : 'bg-blue-200/30 text-blue-100'
+                        : 'bg-blue-100 text-blue-600'
                     }`}>
                       {scheduledActivities?.filter(a => a.day === 'saturday' && !a.isBlocked).length || 0}
                     </span>
@@ -375,17 +555,17 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
                   onClick={() => setSelectedDay('sunday')}
                   className={`flex-1 py-4 px-6 rounded-xl font-bold text-sm transition-all duration-300 ${
                     selectedDay === 'sunday'
-                      ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-xl transform scale-105 border-2 border-purple-300'
-                      : 'bg-gradient-to-r from-purple-400/30 to-purple-500/30 text-purple-100 hover:text-white hover:from-purple-400/50 hover:to-purple-500/50 hover:scale-102 border-2 border-purple-400/40'
+                      ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-xl transform scale-105'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white'
                   }`}
                 >
                   <div className="flex items-center justify-center gap-2">
-                    <div className={`w-3 h-3 rounded-full shadow-sm ${selectedDay === 'sunday' ? 'bg-white' : 'bg-purple-200'}`}></div>
+                    <div className={`w-3 h-3 rounded-full ${selectedDay === 'sunday' ? 'bg-white' : 'bg-purple-400'}`}></div>
                     Sunday
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                       selectedDay === 'sunday' 
                         ? 'bg-white/20 text-white' 
-                        : 'bg-purple-200/30 text-purple-100'
+                        : 'bg-purple-100 text-purple-600'
                     }`}>
                       {scheduledActivities?.filter(a => a.day === 'sunday' && !a.isBlocked).length || 0}
                     </span>
@@ -395,36 +575,34 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
 
               {/* Selected Day Timeline */}
               <div className="space-y-3">
-                <div className={`flex items-center justify-between p-4 rounded-2xl border backdrop-blur-sm ${
+                <div className={`flex items-center justify-between p-4 rounded-2xl border ${
                   selectedDay === 'saturday'
-                    ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-blue-400/30'
-                    : 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-400/30'
+                    ? 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200'
+                    : 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded-full animate-pulse shadow-lg ${
+                    <div className={`w-4 h-4 rounded-full animate-pulse ${
                       selectedDay === 'saturday' ? 'bg-blue-400' : 'bg-purple-400'
                     }`}></div>
-                    <h4 className="text-lg font-bold text-white capitalize">{selectedDay}</h4>
-                    <span className={`text-sm ${
-                      selectedDay === 'saturday' ? 'text-blue-200' : 'text-purple-200'
-                    }`}>
+                    <h4 className="text-lg font-bold text-gray-900 capitalize">{selectedDay}</h4>
+                    <span className="text-sm text-gray-600">
                       {selectedDay === 'saturday' ? 'Sep 14' : 'Sep 15'}
                     </span>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-xs font-medium ${
                     selectedDay === 'saturday'
-                      ? 'bg-blue-500/30 text-blue-200'
-                      : 'bg-purple-500/30 text-purple-200'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-purple-100 text-purple-700'
                   }`}>
                     {scheduledActivities?.filter(a => a.day === selectedDay && !a.isBlocked).length || 0} activities
                   </div>
                 </div>
-                
+
                 <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
                   {TIME_SLOT_MAP.map((slot) => {
                     const activity = getActivityForSlot(slot.id, selectedDay)
                     const isOccupied = isSlotOccupied(slot.id, selectedDay)
-                    
+
                     return (
                       <SynchronizedTimeSlotDropZone
                         key={`${selectedDay}-${slot.id}`}
@@ -448,7 +626,7 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   )
 }
 
-// ✅ ENHANCED VISUAL TIMELINE SLOT COMPONENT
+// ✅ KEEP THE EXISTING SYNCHRONIZED TIME SLOT DROP ZONE COMPONENT
 interface SynchronizedTimeSlotDropZoneProps {
   time: string
   timeSlotId: string
@@ -461,7 +639,6 @@ interface SynchronizedTimeSlotDropZoneProps {
 
 const SynchronizedTimeSlotDropZone: React.FC<SynchronizedTimeSlotDropZoneProps> = ({
   time,
-  // timeSlotId,
   day,
   activity,
   isOccupied,
@@ -486,7 +663,7 @@ const SynchronizedTimeSlotDropZone: React.FC<SynchronizedTimeSlotDropZoneProps> 
   const timeHour = parseInt(time.split(':')[0])
   const isPM = time.includes('PM')
   const is24Hour = isPM ? timeHour + 12 : timeHour
-  
+
   // Dynamic background based on time of day
   const getTimeGradient = () => {
     if (is24Hour >= 6 && is24Hour < 12) return 'from-amber-50 to-yellow-50' // Morning
@@ -567,11 +744,11 @@ const SynchronizedTimeSlotDropZone: React.FC<SynchronizedTimeSlotDropZoneProps> 
                     </span>
                   )}
                 </div>
-                
+
                 <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
                   {activity.description}
                 </p>
-                
+
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <Clock className="w-3 h-3" />
