@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { ScheduledActivity, Activity } from '../types/index'
+import { databaseService } from '../services/database/DatabaseService'
 
 // Using global ScheduledActivity type from types/index.ts
 
