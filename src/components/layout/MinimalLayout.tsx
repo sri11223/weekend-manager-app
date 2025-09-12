@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Film, Utensils, Gamepad2, MapPin, Users, Plane } from 'lucide-react'
+import { Search, Film, Utensils, Gamepad2, MapPin, Users, Plane, Share2 } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
@@ -8,6 +8,7 @@ import FloatingActivityBrowser from '../features/FloatingActivityBrowser'
 import ThemeSelector from '../features/ThemeSelector'
 import PlanSummary from '../features/PlanSummary'
 import LongWeekendBanner from '../features/LongWeekendBanner'
+import { ShareExportPanel } from '../features/ShareExportPanel'
 import { useTheme } from '../../hooks/useTheme'
 import { useScheduleStore } from '../../store/scheduleStore'
 
@@ -32,6 +33,10 @@ export const MinimalLayout: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activePanel, setActivePanel] = useState<string | null>(null)
+  const [showShareExport, setShowShareExport] = useState(false)
+  
+  // Debug state
+  console.log('MinimalLayout render - showShareExport:', showShareExport)
   // const [showCommunity, setShowCommunity] = useState(false)
   // const [showBudget, setShowBudget] = useState(false)
   // const [showSocial, setShowSocial] = useState(false)
@@ -128,6 +133,16 @@ export const MinimalLayout: React.FC = () => {
             <div className="flex items-center space-x-4">
               <ThemeSelector />
               <button 
+                onClick={() => {
+                  console.log('Share button clicked!')
+                  setShowShareExport(true)
+                }}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-white/80 hover:text-white transition-colors hover:bg-white/10 rounded-lg"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Share</span>
+              </button>
+              <button 
                 onClick={handleClearAll}
                 className="text-sm text-white/80 hover:text-white transition-colors"
               >
@@ -221,7 +236,6 @@ export const MinimalLayout: React.FC = () => {
           >
             <PlanSummary 
               scheduledActivities={scheduledActivities}
-              selectedDays={selectedDays}
               onRemoveActivity={handleRemoveActivity}
             />
           </aside>
@@ -238,6 +252,18 @@ export const MinimalLayout: React.FC = () => {
               onAddActivity={handleAddActivity}
               onRemoveActivity={handleRemoveActivity}
               scheduledActivities={scheduledActivities}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Share Export Panel */}
+        <AnimatePresence>
+          {showShareExport && (
+            <ShareExportPanel
+              onClose={() => {
+                console.log('Closing ShareExportPanel')
+                setShowShareExport(false)
+              }}
             />
           )}
         </AnimatePresence>
