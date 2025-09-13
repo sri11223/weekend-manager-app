@@ -1,4 +1,4 @@
-import { MinimalLayout } from './components/layout/MinimalLayout'
+import { SimpleMinimalLayout } from './components/layout/SimpleMinimalLayout'
 import { WeatherProvider } from './providers/WeatherProvider'
 import './App.css'
 
@@ -6,7 +6,7 @@ function App() {
   return (
     <WeatherProvider>
       <div className="App">
-        <MinimalLayout />
+        <SimpleMinimalLayout />
       </div>
     </WeatherProvider>
   )

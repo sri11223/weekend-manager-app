@@ -5,7 +5,14 @@ import { motion } from 'framer-motion'
 import { Activity } from './DraggableActivityCard'
 import DraggableActivityItem from './DraggableActivityItem'
 import { useDrop } from 'react-dnd'
-import { mockActivitiesDatabase, MockActivityService } from '../../data/mockActivities'
+import { MockActivityService } from '../../data/mockActivities'
+
+// Extended Activity interface with additional fields for enhanced filtering
+interface ExtendedActivity extends Activity {
+  tags: string[]
+  difficulty?: string
+  indoor?: boolean
+}
 
 interface FloatingActivityBrowserProps {
   category: string
@@ -15,6 +22,10 @@ interface FloatingActivityBrowserProps {
   onRemoveActivity?: (activityId: string) => void
   scheduledActivities?: any[]
   themeId?: string
+  selectedWeekend?: {
+    saturday: Date
+    sunday: Date
+  }
 }
 
 // ✅ THEME-AWARE CATEGORY CONFIGS WITH MOCK DATA MAPPING
@@ -259,9 +270,10 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   onAddActivity,
   onRemoveActivity,
   scheduledActivities = [],
-  themeId = 'adventurous'
+  themeId = 'adventurous',
+  selectedWeekend
 }) => {
-  const [activities, setActivities] = useState<Activity[]>([])
+  const [activities, setActivities] = useState<ExtendedActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [localSearch, setLocalSearch] = useState(searchQuery)
   const [filter, setFilter] = useState<'all' | 'free' | 'paid'>('all')
@@ -269,6 +281,20 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
 
   // ✅ THEME-AWARE CONFIG
   const config = getThemeCategoryConfig(category, themeId)
+
+  // ✅ FORMAT DATES FOR DISPLAY
+  const formatDisplayDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric'
+    })
+  }
+
+  // ✅ GET CURRENT WEEKEND DATES OR FALLBACK TO DEFAULT
+  const currentWeekend = selectedWeekend || {
+    saturday: new Date(2025, 8, 14), // Sep 14, 2025
+    sunday: new Date(2025, 8, 15)    // Sep 15, 2025
+  }
 
   // ✅ LOAD ACTIVITIES FROM MOCK DATA
   useEffect(() => {
@@ -280,23 +306,25 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
       setLoading(true)
       console.log(`🎨 Loading ${category} activities from mock data for theme: ${themeId}`)
 
-      // ✅ GET ACTIVITIES FROM MOCK DATA
-      const mockActivities = MockActivityService.getActivitiesForCategory(themeId, category)
+      // ✅ ADD REALISTIC LOADING DELAY FOR BETTER UX
+      setTimeout(() => {
+        // ✅ GET ACTIVITIES FROM MOCK DATA
+        const mockActivities = MockActivityService.getActivitiesForCategory(themeId, category)
 
-      if (mockActivities.length === 0) {
-        console.warn(`❌ No activities found for category: ${category} in theme: ${themeId}`)
-        setActivities([])
-        setLoading(false)
-        return
-      }
+        if (mockActivities.length === 0) {
+          console.warn(`❌ No activities found for category: ${category} in theme: ${themeId}`)
+          setActivities([])
+          setLoading(false)
+          return
+        }
 
-      // ✅ CONVERT MOCK ACTIVITIES TO COMPONENT ACTIVITIES
-      let result: Activity[] = mockActivities.map(mockActivity => ({
-        id: mockActivity.id,
-        title: mockActivity.name,
-        description: mockActivity.description,
-        category: mockActivity.category,
-        duration: mockActivity.duration,
+        // ✅ CONVERT MOCK ACTIVITIES TO COMPONENT ACTIVITIES
+        let result: ExtendedActivity[] = mockActivities.map(mockActivity => ({
+          id: mockActivity.id,
+          title: mockActivity.name,
+          description: mockActivity.description,
+          category: mockActivity.category,
+          duration: mockActivity.duration,
         cost: typeof mockActivity.cost === 'string' ? 
           (mockActivity.cost === 'free' ? 0 : 
            mockActivity.cost === 'low' ? 15 : 
@@ -312,7 +340,7 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
         // Additional mock data fields
         difficulty: mockActivity.difficulty,
         indoor: mockActivity.indoor,
-        tags: mockActivity.tags || []
+        tags: mockActivity.tags || [mockActivity.category, mockActivity.mood, mockActivity.difficulty || 'medium']
       }))
 
       // ✅ APPLY SEARCH FILTER
@@ -320,8 +348,8 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
         result = result.filter(activity =>
           activity.title.toLowerCase().includes(localSearch.toLowerCase()) ||
           activity.description.toLowerCase().includes(localSearch.toLowerCase()) ||
-          activity.tags.some(tag => tag.toLowerCase().includes(localSearch.toLowerCase())) ||
-          activity.moodTags.some(mood => mood.toLowerCase().includes(localSearch.toLowerCase()))
+          activity.tags.some((tag: string) => tag.toLowerCase().includes(localSearch.toLowerCase())) ||
+          activity.moodTags.some((mood: string) => mood.toLowerCase().includes(localSearch.toLowerCase()))
         )
       }
 
@@ -332,13 +360,14 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
         result = result.filter(activity => activity.cost > 0)
       }
 
-      setActivities(result)
-      console.log(`✅ Loaded ${result.length} mock activities for ${category} (${themeId} theme)`)
+        setActivities(result)
+        console.log(`✅ Loaded ${result.length} mock activities for ${category} (${themeId} theme)`)
+        setLoading(false)
+      }, 800) // ✅ 800ms loading delay for realistic feel
 
     } catch (error) {
       console.error('❌ Failed to load mock activities:', error)
       setActivities([])
-    } finally {
       setLoading(false)
     }
   }
@@ -362,10 +391,10 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   }
 
   // Handle schedule activity from modal
-  const handleScheduleActivity = (activity: Activity, day: 'saturday' | 'sunday', timeSlot: string) => {
+  const handleScheduleActivity = (activity: Activity | ExtendedActivity, day: 'saturday' | 'sunday', timeSlot: string) => {
     if (onAddActivity) {
       const convertedTimeSlot = convertTimeToId(timeSlot)
-      const success = onAddActivity(activity, convertedTimeSlot, day)
+      const success = onAddActivity(activity as Activity, convertedTimeSlot, day)
       if (success) {
         console.log('✅ Activity scheduled successfully in popup')
       } else {
@@ -374,10 +403,10 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
     }
   }
 
-  const handleQuickAdd = (activity: Activity, day: 'saturday' | 'sunday', timeSlot: string) => {
+  const handleQuickAdd = (activity: Activity | ExtendedActivity, day: 'saturday' | 'sunday', timeSlot: string) => {
     if (onAddActivity) {
       const convertedTimeSlot = convertTimeToId(timeSlot)
-      onAddActivity(activity, convertedTimeSlot, day)
+      onAddActivity(activity as Activity, convertedTimeSlot, day)
     }
   }
 
@@ -463,11 +492,55 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="bg-gray-100 rounded-xl p-4 animate-pulse">
-                    <div className="bg-gray-200 h-48 rounded-lg mb-4"></div>
-                    <div className="bg-gray-200 h-4 rounded mb-2"></div>
-                    <div className="bg-gray-200 h-3 rounded w-2/3"></div>
-                  </div>
+                  <motion.div 
+                    key={i} 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: i * 0.1 }}
+                    className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all"
+                  >
+                    {/* Image Skeleton */}
+                    <div className="relative">
+                      <div className="w-full h-48 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse"></div>
+                      
+                      {/* Floating elements like real cards */}
+                      <div className="absolute top-3 right-3 flex items-center space-x-2">
+                        <div className="w-8 h-6 bg-white/90 rounded-full animate-pulse"></div>
+                        <div className="w-6 h-6 bg-white/90 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Content Skeleton */}
+                    <div className="p-4 space-y-3">
+                      {/* Title skeleton */}
+                      <div className="h-5 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 rounded animate-pulse"></div>
+                      
+                      {/* Description skeleton */}
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 rounded w-full animate-pulse"></div>
+                        <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 rounded w-2/3 animate-pulse"></div>
+                      </div>
+                      
+                      {/* Meta info skeleton */}
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
+                        </div>
+                      </div>
+                      
+                      {/* Tags skeleton */}
+                      <div className="flex items-center space-x-2 pt-2">
+                        <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div className="h-6 w-12 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                  </motion.div>
                 ))}
               </div>
             ) : activities.length === 0 ? (
@@ -496,7 +569,7 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
                   {activities.map((activity) => (
                     <DraggableActivityItem
                       key={activity.id}
-                      activity={activity}
+                      activity={activity as Activity}
                       onQuickAdd={handleQuickAdd}
                       scheduledActivities={scheduledActivities || []}
                       onRemoveActivity={onRemoveActivity}
@@ -586,7 +659,7 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
                     }`}></div>
                     <h4 className="text-lg font-bold text-gray-900 capitalize">{selectedDay}</h4>
                     <span className="text-sm text-gray-600">
-                      {selectedDay === 'saturday' ? 'Sep 14' : 'Sep 15'}
+                      {formatDisplayDate(selectedDay === 'saturday' ? currentWeekend.saturday : currentWeekend.sunday)}
                     </span>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-xs font-medium ${
