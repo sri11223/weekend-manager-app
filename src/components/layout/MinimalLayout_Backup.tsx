@@ -8,10 +8,11 @@ import EnhancedWeekendTimeline from '../features/EnhancedWeekendTimeline'
 import FloatingActivityBrowser from '../features/FloatingActivityBrowser'
 import ThemeSelector from '../features/ThemeSelector'
 import PlanSummary from '../features/PlanSummary'
-import LongWeekendBanner from '../features/LongWeekendBanner'
+import LongWeekendWidget from '../features/LongWeekendWidget'
 import { ShareExportPanel } from '../features/ShareExportPanel'
 import { useTheme } from '../../hooks/useTheme'
 import { useScheduleStore } from '../../store/scheduleStore'
+import { useWeekendStore } from '../../store/weekendStore'
 import { mockActivitiesDatabase, MockActivityService } from '../../data/mockActivities'
 
 // Category Icons

@@ -23,6 +23,16 @@ interface WeekendPlanState {
   scheduledActivities: ScheduledActivity[]
   totalCost: number
   
+  // Long Weekend State
+  isLongWeekendMode: boolean
+  longWeekendDays: string[]
+  upcomingHolidays: Array<{
+    date: string;
+    localName: string;
+    name: string;
+    countryCode: string;
+  }>
+  
   // Actions
   addActivity: (activity: any, day: 'saturday' | 'sunday', timeSlot: string) => void
   removeActivity: (id: string) => void
@@ -32,6 +42,11 @@ interface WeekendPlanState {
   getActivityForSlot: (day: 'saturday' | 'sunday', timeSlot: string) => ScheduledActivity | null
   calculateTotalCost: () => number
   hasTimeConflict: (day: 'saturday' | 'sunday', timeSlot: string, duration: number) => boolean
+  
+  // Long Weekend Actions
+  setLongWeekendMode: (enabled: boolean, days?: string[]) => void
+  setUpcomingHolidays: (holidays: Array<{date: string; localName: string; name: string; countryCode: string}>) => void
+  getAvailableDays: () => string[]
 }
 
 const TIME_SLOTS = {
@@ -47,6 +62,11 @@ export const useWeekendStore = create<WeekendPlanState>()(
     (set, get) => ({
       scheduledActivities: [],
       totalCost: 0,
+      
+      // Long Weekend State
+      isLongWeekendMode: false,
+      longWeekendDays: ['saturday', 'sunday'],
+      upcomingHolidays: [],
 
       addActivity: (activity, day, timeSlot) => {
         const newScheduledActivity: ScheduledActivity = {
@@ -143,6 +163,27 @@ export const useWeekendStore = create<WeekendPlanState>()(
           // Check for overlap
           return (newStart < activityEnd && newEnd > activityStart)
         })
+      },
+
+      // Long Weekend Actions
+      setLongWeekendMode: (enabled, days) => {
+        set(() => ({
+          isLongWeekendMode: enabled,
+          longWeekendDays: days || ['saturday', 'sunday', 'monday', 'friday']
+        }))
+      },
+
+      setUpcomingHolidays: (holidays) => {
+        set(() => ({
+          upcomingHolidays: holidays
+        }))
+      },
+
+      getAvailableDays: () => {
+        const state = get()
+        return state.isLongWeekendMode 
+          ? state.longWeekendDays 
+          : ['saturday', 'sunday']
       }
     }),
     {

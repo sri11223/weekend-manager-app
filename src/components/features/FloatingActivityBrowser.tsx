@@ -1,11 +1,12 @@
 // src/features/FloatingActivityBrowser.tsx - UPDATED WITH MOCK DATA
 import React, { useState, useEffect } from 'react'
-import { X, Search, Filter, Clock } from 'lucide-react'
+import { X, Search, Clock, Heart } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Activity } from './DraggableActivityCard'
 import DraggableActivityItem from './DraggableActivityItem'
 import { useDrop } from 'react-dnd'
 import { MockActivityService } from '../../data/mockActivities'
+import { AVAILABLE_VIBES } from './MoodVibeTracker'
 
 // Extended Activity interface with additional fields for enhanced filtering
 interface ExtendedActivity extends Activity {
@@ -278,6 +279,8 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   const [localSearch, setLocalSearch] = useState(searchQuery)
   const [filter, setFilter] = useState<'all' | 'free' | 'paid'>('all')
   const [selectedDay, setSelectedDay] = useState<'saturday' | 'sunday'>('saturday')
+  const [selectedVibes, setSelectedVibes] = useState<string[]>([])
+  const [showVibeFilter, setShowVibeFilter] = useState(false)
 
   // ✅ THEME-AWARE CONFIG
   const config = getThemeCategoryConfig(category, themeId)
@@ -299,7 +302,7 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   // ✅ LOAD ACTIVITIES FROM MOCK DATA
   useEffect(() => {
     loadMockActivities()
-  }, [category, themeId, localSearch, filter])
+  }, [category, themeId, localSearch, filter, selectedVibes])
 
   const loadMockActivities = () => {
     try {
@@ -353,6 +356,15 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
         )
       }
 
+      // ✅ APPLY MOOD/VIBE FILTER
+      if (selectedVibes.length > 0) {
+        result = result.filter(activity =>
+          activity.moodTags.some((mood: string) => 
+            selectedVibes.includes(mood)
+          )
+        )
+      }
+
       // ✅ APPLY COST FILTER
       if (filter === 'free') {
         result = result.filter(activity => activity.cost === 0)
@@ -376,6 +388,13 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   const convertTimeToId = (timeString: string): string => {
     const slot = TIME_SLOT_MAP.find(s => s.display === timeString)
     return slot ? slot.id : timeString.toLowerCase().replace(/[:\s]/g, '')
+  }
+
+  // ✅ COUNT ACTIVITIES PER VIBE
+  const getVibeActivityCount = (vibeId: string) => {
+    return activities.filter(activity => 
+      activity.moodTags.includes(vibeId)
+    ).length
   }
 
   const isSlotOccupied = (timeSlotId: string, day: 'saturday' | 'sunday'): boolean => {
@@ -471,18 +490,91 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
             </div>
 
             <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-white/80" />
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as 'all' | 'free' | 'paid')}
                 className="bg-white/20 border border-white/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
               >
-                <option value="all">All Activities</option>
+                <option value="all">All Prices</option>
                 <option value="free">Free Only</option>
-                <option value="paid">Paid Activities</option>
+                <option value="paid">Paid Only</option>
               </select>
             </div>
+
+            <button
+              onClick={() => setShowVibeFilter(!showVibeFilter)}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors ${
+                showVibeFilter || selectedVibes.length > 0
+                  ? 'bg-white/30 border-white/50 text-white' 
+                  : 'bg-white/20 border-white/30 text-white/80 hover:bg-white/25'
+              }`}
+            >
+              <Heart className="w-4 h-4" />
+              <span className="text-sm">Vibes</span>
+              {selectedVibes.length > 0 && (
+                <span className="bg-white/40 text-xs px-1.5 py-0.5 rounded-full font-medium">
+                  {selectedVibes.length}
+                </span>
+              )}
+            </button>
           </div>
+
+          {/* Vibe Filter Panel */}
+          {showVibeFilter && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
+            >
+              <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                <Heart className="w-4 h-4" />
+                Filter by Mood & Vibes
+              </h4>
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                {AVAILABLE_VIBES.map((vibe) => {
+                  const activityCount = getVibeActivityCount(vibe.id)
+                  const isSelected = selectedVibes.includes(vibe.id)
+                  return (
+                    <button
+                      key={vibe.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedVibes(selectedVibes.filter(v => v !== vibe.id))
+                        } else {
+                          setSelectedVibes([...selectedVibes, vibe.id])
+                        }
+                      }}
+                      disabled={activityCount === 0}
+                      className={`p-2 rounded-lg border transition-all text-sm relative ${
+                        isSelected
+                          ? 'bg-white/30 border-white/50 text-white scale-105 shadow-lg'
+                          : activityCount > 0
+                            ? 'bg-white/10 border-white/20 text-white/80 hover:bg-white/20 hover:scale-102'
+                            : 'bg-white/5 border-white/10 text-white/40 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <div className="text-lg mb-1">{vibe.emoji}</div>
+                      <div className="font-medium text-xs">{vibe.name}</div>
+                      {activityCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-white/40 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                          {activityCount}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              {selectedVibes.length > 0 && (
+                <button
+                  onClick={() => setSelectedVibes([])}
+                  className="mt-3 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-white text-xs transition-colors"
+                >
+                  Clear All ({selectedVibes.length})
+                </button>
+              )}
+            </motion.div>
+          )}
         </div>
 
         {/* Content with Timeline Sidebar */}

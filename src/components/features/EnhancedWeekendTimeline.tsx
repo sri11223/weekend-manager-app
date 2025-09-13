@@ -7,6 +7,7 @@ import { DayNightBackground, getDayNightTheme, getDayNightColors } from '../anim
 import StarryNightBackground from '../animations/StarryNightBackground'
 import { TIME_SLOTS, TimeSlot } from '../../types/theme'
 import { useTheme } from '../../hooks/useTheme'
+import { useWeekendStore } from '../../store/weekendStore'
 
 interface Activity {
   id: string
@@ -23,14 +24,14 @@ interface Activity {
 
 interface ScheduledActivity extends Activity {
   timeSlot: string
-  day: 'saturday' | 'sunday'
+  day: 'saturday' | 'sunday' | 'friday' | 'monday'
 }
 
 interface EnhancedWeekendTimelineProps {
   scheduledActivities: ScheduledActivity[]
-  onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday') => boolean
+  onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => boolean
   onRemoveActivity: (activityId: string) => void
-  onMoveActivity?: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday') => boolean
+  onMoveActivity?: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday' | 'friday' | 'monday') => boolean
   selectedDays: ('saturday' | 'sunday' | 'friday' | 'monday')[]
   selectedWeekend?: {
     saturday: Date
@@ -40,10 +41,10 @@ interface EnhancedWeekendTimelineProps {
 
 interface TimeSlotDropZoneProps {
   timeSlot: TimeSlot
-  day: 'saturday' | 'sunday'
+  day: 'saturday' | 'sunday' | 'friday' | 'monday'
   activity?: ScheduledActivity
   isOccupied: boolean
-  onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday') => boolean
+  onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => boolean
   onRemoveActivity: (activityId: string) => void
   theme: any
   selectedDate?: Date
@@ -288,6 +289,7 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   selectedWeekend
 }) => {
   const { currentTheme } = useTheme()
+  const { isLongWeekendMode, getAvailableDays } = useWeekendStore()
   const [selectedTimeRange, setSelectedTimeRange] = useState<'all' | 'morning' | 'afternoon' | 'evening' | 'night'>('all')
 
   const filteredTimeSlots = selectedTimeRange === 'all' 
@@ -295,23 +297,34 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
     : TIME_SLOTS.filter(slot => slot.period === selectedTimeRange)
 
   // Helper functions
-  const getActivityForSlot = (timeSlot: string, day: 'saturday' | 'sunday') => {
+  const getActivityForSlot = (timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
     return scheduledActivities.find(activity => 
       activity.timeSlot === timeSlot && activity.day === day
     )
   }
 
-  const isSlotOccupied = (timeSlot: string, day: 'saturday' | 'sunday') => {
+  const isSlotOccupied = (timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
     return scheduledActivities.some(activity => 
       activity.timeSlot === timeSlot && activity.day === day
     )
   }
 
-  const getActivitiesCount = (day: 'saturday' | 'sunday') => {
+  const getActivitiesCount = (day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
     return scheduledActivities.filter(a => a.day === day && !a.isBlocked).length
   }
 
-  const activeDays = selectedDays.filter(day => day === 'saturday' || day === 'sunday') as ('saturday' | 'sunday')[]
+  // ✅ Use long weekend mode to determine which days to show
+  const availableDays = getAvailableDays()
+  const activeDays = isLongWeekendMode 
+    ? availableDays.filter(day => ['saturday', 'sunday', 'friday', 'monday'].includes(day)) as ('saturday' | 'sunday' | 'friday' | 'monday')[]
+    : ['saturday', 'sunday'] as ('saturday' | 'sunday')[]
+
+  console.log('🔍 Timeline Days DEBUG:', { 
+    isLongWeekendMode, 
+    availableDays, 
+    activeDays,
+    source: 'EnhancedWeekendTimeline'
+  })
 
   return (
     <div className="space-y-6">

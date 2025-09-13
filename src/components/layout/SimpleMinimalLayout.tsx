@@ -1,14 +1,18 @@
 import React, { useState, useMemo } from 'react'
-import { Search, Share2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Share2, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { useTheme } from '../../hooks/useTheme'
 import { useScheduleStore } from '../../store/scheduleStore'
+import { useWeekendStore } from '../../store/weekendStore'
 import { MockActivityService } from '../../data/mockActivities'
 import EnhancedWeekendTimeline from '../features/EnhancedWeekendTimeline'
 import FloatingActivityBrowser from '../features/FloatingActivityBrowser'
 import ThemeSelector from '../features/ThemeSelector'
 import PlanSummary from '../features/PlanSummary'
+import LongWeekendWidget from '../features/LongWeekendWidget'
+import CompactLongWeekendTimeline from '../features/CompactLongWeekendTimeline'
+import LongWeekendTimeline from '../features/LongWeekendTimeline'
 import {
   Activity,
   Mountain,
@@ -134,7 +138,42 @@ export const SimpleMinimalLayout: React.FC = () => {
     const day = date.getDay()
     return day === 0 || day === 6 // Sunday or Saturday
   }
-  
+
+  // Check if a date is part of a long weekend (Friday or Monday adjacent to weekend)
+  const isLongWeekendDay = (date: Date) => {
+    const { upcomingHolidays } = useWeekendStore.getState()
+    const day = date.getDay()
+    
+    // Only mark as long weekend if there's actually a holiday that creates one
+    if (day === 5) { // Friday
+      // Check if there's a holiday on the following Monday that makes this a 4-day weekend
+      const monday = new Date(date)
+      monday.setDate(monday.getDate() + 3) // Friday + 3 days = Monday
+      
+      return upcomingHolidays.some(holiday => {
+        const holidayDate = new Date(holiday.date)
+        return holidayDate.toDateString() === monday.toDateString()
+      })
+    }
+    
+    if (day === 1) { // Monday
+      // Check if there's a holiday on this Monday (making Sat-Sun-Mon a 3-day weekend)
+      // OR if there was a holiday on the previous Friday (making Fri-Sat-Sun-Mon a 4-day weekend)
+      const friday = new Date(date)
+      friday.setDate(friday.getDate() - 3) // Monday - 3 days = Friday
+      
+      return upcomingHolidays.some(holiday => {
+        const holidayDate = new Date(holiday.date)
+        return (
+          holidayDate.toDateString() === date.toDateString() || // Holiday on Monday
+          holidayDate.toDateString() === friday.toDateString()   // Holiday on Friday
+        )
+      })
+    }
+    
+    return false
+  }
+
   const isSelectedWeekend = (date: Date) => {
     return (
       date.toDateString() === selectedWeekend.saturday.toDateString() ||
@@ -143,6 +182,44 @@ export const SimpleMinimalLayout: React.FC = () => {
   }
   
   const handleDateClick = (date: Date) => {
+    // Check if this is a long weekend day
+    if (isLongWeekendDay(date)) {
+      const { upcomingHolidays } = useWeekendStore.getState()
+      const day = date.getDay()
+      
+      let friday: Date, saturday: Date, sunday: Date, monday: Date
+      
+      if (day === 5) { // Friday
+        friday = date
+        saturday = new Date(date)
+        saturday.setDate(date.getDate() + 1)
+        sunday = new Date(date)
+        sunday.setDate(date.getDate() + 2)
+        monday = new Date(date)
+        monday.setDate(date.getDate() + 3)
+      } else if (day === 1) { // Monday
+        monday = date
+        sunday = new Date(date)
+        sunday.setDate(date.getDate() - 1)
+        saturday = new Date(date)
+        saturday.setDate(date.getDate() - 2)
+        friday = new Date(date)
+        friday.setDate(date.getDate() - 3)
+      } else {
+        // Handle other weekend days (should not happen with current logic but safety fallback)
+        return
+      }
+      
+      // Set long weekend dates and show full timeline
+      setLongWeekendDates({ friday, saturday, sunday, monday })
+      setShowFullLongWeekendTimeline(true)
+      setLongWeekendMode(true, ['friday', 'saturday', 'sunday', 'monday'])
+      setUpcomingHolidays(upcomingHolidays)
+      
+      console.log('🎉 Long weekend detected! Opening 4-day timeline:', { friday, saturday, sunday, monday })
+      return
+    }
+    
     if (isWeekend(date)) {
       // Find the weekend pair for clicked date
       let saturday, sunday
@@ -180,10 +257,66 @@ export const SimpleMinimalLayout: React.FC = () => {
   const { 
     getCurrentWeekendActivities,
     setCurrentWeekend,
-    addActivity, 
+    addActivity: addRegularActivity, 
     removeActivity, 
     clearAllActivities 
   } = useScheduleStore()
+
+  const {
+    setLongWeekendMode,
+    setUpcomingHolidays,
+    isLongWeekendMode
+  } = useWeekendStore()
+
+  // Extended addActivity that handles both regular weekends and long weekends
+  const addActivity = (activity: any, timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
+    // For regular weekend days, use the regular store
+    if (day === 'saturday' || day === 'sunday') {
+      return addRegularActivity(activity, timeSlot, day)
+    }
+    
+    // For Friday/Monday (long weekend days), we'll handle them differently
+    // For now, just return true to avoid errors - you can implement long weekend storage later
+    console.log('Long weekend activity added:', { activity, timeSlot, day })
+    return true
+  }
+
+  // Long weekend click handler
+  const [showLongWeekendTimeline, setShowLongWeekendTimeline] = useState(false)
+  const [showFullLongWeekendTimeline, setShowFullLongWeekendTimeline] = useState(false)
+  const [longWeekendDates, setLongWeekendDates] = useState<{friday: Date, saturday: Date, sunday: Date, monday: Date} | null>(null)
+  const [currentHolidays, setCurrentHolidays] = useState<Array<{date: string; localName: string; name: string; countryCode: string}>>([])
+
+  // Reset long weekend mode on component mount to ensure clean state
+  React.useEffect(() => {
+    // Only reset if not already in the middle of long weekend planning
+    if (isLongWeekendMode && !showLongWeekendTimeline) {
+      console.log('🔄 Resetting long weekend mode on component mount')
+      setLongWeekendMode(false)
+    }
+  }, [isLongWeekendMode, showLongWeekendTimeline, setLongWeekendMode]) // Dependencies for proper effect management
+
+  const handleLongWeekendClick = (holidays: Array<{date: string; localName: string; name: string; countryCode: string}>) => {
+    console.log('🎉 Long weekend clicked!', holidays)
+    
+    // Enable long weekend mode
+    setLongWeekendMode(true, ['friday', 'saturday', 'sunday', 'monday'])
+    setUpcomingHolidays(holidays)
+    setCurrentHolidays(holidays)
+    
+    // Show the compact timeline modal
+    setShowLongWeekendTimeline(true)
+  }
+
+  const handleCloseLongWeekendTimeline = () => {
+    setShowLongWeekendTimeline(false)
+  }
+
+  const handleCloseFullLongWeekendTimeline = () => {
+    setShowFullLongWeekendTimeline(false)
+    setLongWeekendMode(false)
+    setLongWeekendDates(null)
+  }
   
   const [activePanel, setActivePanel] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -359,6 +492,33 @@ export const SimpleMinimalLayout: React.FC = () => {
           </div>
         </header>
 
+        {/* Long Weekend Mode Indicator */}
+        {showFullLongWeekendTimeline && longWeekendDates && (
+          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-1 bg-white/20 rounded-lg">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Long Weekend Planning Mode</h3>
+                  <p className="text-sm text-white/80">
+                    {formatDate(longWeekendDates.friday)} - {formatDate(longWeekendDates.monday)} 
+                    (4 days of fun!)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseFullLongWeekendTimeline}
+                className="flex items-center space-x-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm"
+              >
+                <span>Exit Long Weekend Mode</span>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* CATEGORIES BAR - Under Navbar */}
         <div 
           className="border-b px-6 py-4 overflow-x-auto"
@@ -391,6 +551,14 @@ export const SimpleMinimalLayout: React.FC = () => {
                 </button>
               )
             })}
+            
+            {/* Long Weekend Widget in the gap */}
+            <div className="flex items-center ml-4 pl-4 border-l" style={{ borderColor: currentTheme.colors.border }}>
+              <LongWeekendWidget 
+                theme={currentTheme}
+                onLongWeekendClick={handleLongWeekendClick}
+              />
+            </div>
           </div>
         </div>
 
@@ -477,12 +645,13 @@ export const SimpleMinimalLayout: React.FC = () => {
                     const isWeekendDay = isWeekend(date)
                     const isSelected = isSelectedWeekend(date)
                     const isToday = date.toDateString() === new Date().toDateString()
+                    const isLongWeekend = isLongWeekendDay(date)
                     
                     return (
                       <button
                         key={index}
                         onClick={() => handleDateClick(date)}
-                        className={`text-center p-1 text-xs rounded transition-colors ${
+                        className={`text-center p-1 text-xs rounded transition-colors relative ${
                           isWeekendDay ? 'cursor-pointer hover:bg-gray-100' : 'cursor-default'
                         } ${isToday ? 'ring-1 ring-blue-400' : ''}`}
                         style={{ 
@@ -499,6 +668,14 @@ export const SimpleMinimalLayout: React.FC = () => {
                         disabled={!isWeekendDay}
                       >
                         {date.getDate()}
+                        {/* Long Weekend Indicator */}
+                        {isLongWeekend && isCurrentMonth && (
+                          <div 
+                            className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: '#FFD700' }}
+                            title="Potential Long Weekend"
+                          />
+                        )}
                       </button>
                     )
                   })}
@@ -528,7 +705,7 @@ export const SimpleMinimalLayout: React.FC = () => {
               scheduledActivities={getCurrentWeekendActivities() as any}
               onAddActivity={addActivity}
               onRemoveActivity={removeActivity}
-              selectedDays={['saturday', 'sunday']}
+              selectedDays={isLongWeekendMode ? ['friday', 'saturday', 'sunday', 'monday'] : ['saturday', 'sunday']}
               selectedWeekend={selectedWeekend}
             />
           </div>
@@ -546,6 +723,21 @@ export const SimpleMinimalLayout: React.FC = () => {
             scheduledActivities={getCurrentWeekendActivities()}
             onRemoveActivity={removeActivity}
             key={`${activePanel}-${themeId}`} // ✅ Force re-render when theme changes
+          />
+        )}
+
+        {/* Compact Long Weekend Timeline Modal */}
+        <CompactLongWeekendTimeline
+          isVisible={showLongWeekendTimeline}
+          onClose={handleCloseLongWeekendTimeline}
+          holidays={currentHolidays}
+        />
+
+        {/* Full Long Weekend Timeline Modal */}
+        {showFullLongWeekendTimeline && longWeekendDates && (
+          <LongWeekendTimeline
+            longWeekendDates={longWeekendDates}
+            onClose={handleCloseFullLongWeekendTimeline}
           />
         )}
       </div>
