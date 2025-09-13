@@ -2,8 +2,9 @@ import React, { useState } from 'react'
 import { useDrop } from 'react-dnd'
 import { Clock, X, Plus } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { WeatherAnimation, getWeatherForTimeSlot, getDayWeather } from '../animations/WeatherAnimations'
+import { WeatherAnimation, getWeatherForTimeSlot } from '../animations/WeatherAnimations'
 import { DayNightBackground, getDayNightTheme, getDayNightColors } from '../animations/DayNightTheme'
+import StarryNightBackground from '../animations/StarryNightBackground'
 import { TIME_SLOTS, TimeSlot } from '../../types/theme'
 import { useTheme } from '../../hooks/useTheme'
 
@@ -31,6 +32,10 @@ interface EnhancedWeekendTimelineProps {
   onRemoveActivity: (activityId: string) => void
   onMoveActivity?: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday') => boolean
   selectedDays: ('saturday' | 'sunday' | 'friday' | 'monday')[]
+  selectedWeekend?: {
+    saturday: Date
+    sunday: Date
+  }
 }
 
 interface TimeSlotDropZoneProps {
@@ -41,6 +46,7 @@ interface TimeSlotDropZoneProps {
   onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday') => boolean
   onRemoveActivity: (activityId: string) => void
   theme: any
+  selectedDate?: Date
 }
 
 const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
@@ -50,7 +56,8 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
   isOccupied,
   onAddActivity,
   onRemoveActivity,
-  theme
+  theme,
+  selectedDate
 }) => {
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: 'activity',
@@ -66,7 +73,7 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
     })
   })
 
-  const weather = getWeatherForTimeSlot(timeSlot.label, day)
+  const weather = getWeatherForTimeSlot(timeSlot.label, day, selectedDate)
   const dayNightPeriod = getDayNightTheme(timeSlot.label)
   const dayNightColors = getDayNightColors(dayNightPeriod, theme)
 
@@ -104,7 +111,8 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
     >
       {/* Background Animations */}
       <DayNightBackground timeSlot={timeSlot.label} className="opacity-40" />
-      <WeatherAnimation weather={weather} className="opacity-60" />
+      <WeatherAnimation weather={weather} timeSlot={timeSlot.label} className="opacity-60" />
+      <StarryNightBackground isNight={dayNightPeriod === 'night'} className="opacity-80" />
 
       {/* Time Label */}
       <div className="flex items-center gap-2 mb-2 relative z-10">
@@ -128,38 +136,91 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
           className="relative"
         >
           {activity.isBlocked ? (
-            // Blocked slot display
+            // Blocked slot display with enhanced spanning visuals
             <div
-              className="p-3 rounded-xl border-2 border-dashed opacity-75"
+              className="p-3 rounded-xl border-2 border-dashed opacity-75 relative overflow-hidden"
               style={{
-                background: `${theme.colors.primary}10`,
+                background: `linear-gradient(45deg, ${theme.colors.primary}08, ${theme.colors.primary}15)`,
                 borderColor: `${theme.colors.primary}30`
               }}
             >
-              <div className="text-center">
-                <p className="text-sm font-medium" style={{ color: theme.colors.text }}>
-                  {activity.title} (continued)
-                </p>
-                <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
-                  Part of multi-hour activity
+              {/* Continuation line indicator */}
+              <div 
+                className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                style={{ backgroundColor: `${theme.colors.primary}60` }}
+              />
+              
+              {/* Visual connection lines */}
+              <div 
+                className="absolute top-0 left-2 right-2 h-0.5 opacity-30"
+                style={{ backgroundColor: `${theme.colors.primary}` }}
+              />
+              <div 
+                className="absolute bottom-0 left-2 right-2 h-0.5 opacity-30"
+                style={{ backgroundColor: `${theme.colors.primary}` }}
+              />
+
+              <div className="text-center relative z-10">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <div 
+                    className="w-2 h-2 rounded-full animate-pulse"
+                    style={{ backgroundColor: theme.colors.primary }}
+                  />
+                  <p className="text-sm font-medium" style={{ color: theme.colors.text }}>
+                    {activity.title}
+                  </p>
+                  <div 
+                    className="w-2 h-2 rounded-full animate-pulse"
+                    style={{ backgroundColor: theme.colors.primary }}
+                  />
+                </div>
+                <p className="text-xs" style={{ color: theme.colors.textSecondary }}>
+                  ⏰ Continued from previous slot
                 </p>
               </div>
             </div>
           ) : (
-            // Main activity display
+            // Main activity display with spanning indicators
             <div
-              className="p-4 rounded-xl shadow-lg border backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer group"
+              className="p-4 rounded-xl shadow-lg border backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer group relative overflow-hidden"
               style={{
                 background: `linear-gradient(135deg, ${theme.colors.surface}95, ${theme.colors.primary}15)`,
                 borderColor: `${theme.colors.primary}50`,
                 boxShadow: `0 8px 32px ${theme.colors.primary}20, 0 4px 16px rgba(0,0,0,0.1)`
               }}
             >
+              {/* Spanning activity indicator */}
+              {activity.duration && activity.duration > 60 && (
+                <div className="absolute top-0 right-0">
+                  <div 
+                    className="px-2 py-1 text-xs font-bold text-white rounded-bl-lg"
+                    style={{ 
+                      background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.primary})`
+                    }}
+                  >
+                    {Math.ceil(activity.duration / 60)}h
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h4 className="font-medium text-sm mb-1" style={{ color: theme.colors.text }}>
-                    {activity.title}
-                  </h4>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-medium text-sm" style={{ color: theme.colors.text }}>
+                      {activity.title}
+                    </h4>
+                    {activity.duration && activity.duration > 60 && (
+                      <span 
+                        className="px-2 py-0.5 text-xs font-bold rounded-full"
+                        style={{ 
+                          backgroundColor: `${theme.colors.accent}20`,
+                          color: theme.colors.accent 
+                        }}
+                      >
+                        SPANS {Math.ceil(activity.duration / 60)}h
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs mb-2" style={{ color: theme.colors.textSecondary }}>
                     {activity.description}
                   </p>
@@ -167,12 +228,14 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
                     {activity.duration && (
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        <span>{Math.round(activity.duration / 60)}h {activity.duration % 60}m</span>
+                        <span className="font-medium">
+                          {Math.floor(activity.duration / 60)}h {activity.duration % 60}m
+                        </span>
                       </div>
                     )}
                     {activity.cost !== undefined && (
                       <div className="flex items-center gap-1">
-                        <span className="text-green-600">${activity.cost}</span>
+                        <span className="text-green-600 font-medium">${activity.cost}</span>
                       </div>
                     )}
                   </div>
@@ -221,7 +284,8 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   onAddActivity,
   onRemoveActivity,
   onMoveActivity,
-  selectedDays
+  selectedDays,
+  selectedWeekend
 }) => {
   const { currentTheme } = useTheme()
   const [selectedTimeRange, setSelectedTimeRange] = useState<'all' | 'morning' | 'afternoon' | 'evening' | 'night'>('all')
@@ -294,7 +358,11 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
                 boxShadow: `0 4px 16px ${currentTheme.colors.primary}10`
               }}
             >
-              <WeatherAnimation weather={getDayWeather(day)} className="opacity-30" />
+              <WeatherAnimation 
+                weather={getWeatherForTimeSlot('12:00', day, day === 'saturday' ? selectedWeekend?.saturday : selectedWeekend?.sunday)} 
+                timeSlot="12:00"
+                className="opacity-30" 
+              />
               
               <div
                 className="w-6 h-6 rounded-full shadow-lg relative z-10 transition-all duration-300"
@@ -318,10 +386,20 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
               
               <div className="ml-auto flex items-center gap-2 relative z-10">
                 <span className="text-sm font-medium transition-colors duration-300" style={{ color: currentTheme.colors.textSecondary }}>
-                  {getDayWeather(day) === 'sunny' && '☀️ Sunny'}
-                  {getDayWeather(day) === 'rainy' && '🌧️ Rainy'}
-                  {getDayWeather(day) === 'snowy' && '❄️ Snowy'}
-                  {getDayWeather(day) === 'cloudy' && '☁️ Cloudy'}
+                  {(() => {
+                    const currentDate = day === 'saturday' ? selectedWeekend?.saturday : selectedWeekend?.sunday;
+                    const weather = getWeatherForTimeSlot('12:00', day, currentDate);
+                    return (
+                      <>
+                        {weather === 'sunny' && '☀️ Sunny'}
+                        {weather === 'rainy' && '🌧️ Rainy'}
+                        {weather === 'snowy' && '❄️ Snowy'}
+                        {weather === 'cloudy' && '☁️ Cloudy'}
+                        {weather === 'partly-cloudy-night' && '⛅ Partly Cloudy'}
+                        {weather === 'clear-night' && '🌙 Clear Night'}
+                      </>
+                    );
+                  })()}
                 </span>
               </div>
             </div>

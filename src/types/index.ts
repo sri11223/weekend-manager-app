@@ -23,6 +23,11 @@ export interface ScheduledActivity extends Activity {
   notes?: string;
   completed?: boolean;
   photos?: string[];
+  // Multi-hour spanning properties
+  isMainActivity?: boolean; // True for the primary activity slot
+  isBlocked?: boolean; // True for continuation/blocking slots
+  parentActivityId?: string; // Reference to main activity for blocked slots
+  spansDuration?: boolean; // True if activity spans multiple hours
 }
 
 export interface WeekendPlan {

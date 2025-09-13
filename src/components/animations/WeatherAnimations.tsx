@@ -2,11 +2,16 @@ import React from 'react'
 import { motion } from 'framer-motion'
 
 interface WeatherAnimationProps {
-  weather: 'sunny' | 'rainy' | 'snowy' | 'cloudy'
+  weather: 'sunny' | 'rainy' | 'snowy' | 'cloudy' | 'clear-night' | 'partly-cloudy-night'
+  timeSlot: string
   className?: string
 }
 
-export const WeatherAnimation: React.FC<WeatherAnimationProps> = ({ weather, className = '' }) => {
+export const WeatherAnimation: React.FC<WeatherAnimationProps> = ({ 
+  weather, 
+  timeSlot,
+  className = '' 
+}) => {
   const renderAnimation = () => {
     switch (weather) {
       case 'sunny':
@@ -17,6 +22,10 @@ export const WeatherAnimation: React.FC<WeatherAnimationProps> = ({ weather, cla
         return <SnowyAnimation />
       case 'cloudy':
         return <CloudyAnimation />
+      case 'clear-night':
+        return <ClearNightAnimation />
+      case 'partly-cloudy-night':
+        return <PartlyCloudyNightAnimation />
       default:
         return null
     }
@@ -202,88 +211,201 @@ const CloudyAnimation: React.FC = () => {
   )
 }
 
-// Weather condition detector based on time and mock weather data
-export const getWeatherForTimeSlot = (timeSlot: string, day: string): 'sunny' | 'rainy' | 'snowy' | 'cloudy' => {
-  // Mock weather data - in real app, this would come from weather API
-  const mockWeatherData: Record<string, Record<string, string>> = {
-    saturday: {
-      '6:00 AM': 'sunny',
-      '7:00 AM': 'sunny',
-      '8:00 AM': 'sunny',
-      '9:00 AM': 'cloudy',
-      '10:00 AM': 'cloudy',
-      '11:00 AM': 'rainy',
-      '12:00 PM': 'rainy',
-      '1:00 PM': 'rainy',
-      '2:00 PM': 'cloudy',
-      '3:00 PM': 'sunny',
-      '4:00 PM': 'sunny',
-      '5:00 PM': 'sunny'
-    },
-    sunday: {
-      '6:00 AM': 'cloudy',
-      '7:00 AM': 'cloudy',
-      '8:00 AM': 'sunny',
-      '9:00 AM': 'sunny',
-      '10:00 AM': 'sunny',
-      '11:00 AM': 'sunny',
-      '12:00 PM': 'sunny',
-      '1:00 PM': 'cloudy',
-      '2:00 PM': 'snowy',
-      '3:00 PM': 'snowy',
-      '4:00 PM': 'cloudy',
-      '5:00 PM': 'cloudy'
-    }
-  }
-
-  return (mockWeatherData[day]?.[timeSlot] as any) || 'sunny'
+const ClearNightAnimation: React.FC = () => {
+  return (
+    <div className="relative w-full h-full">
+      {/* Moon */}
+      <motion.div
+        className="absolute w-5 h-5 bg-gray-100 rounded-full top-4 right-4 shadow-lg"
+        style={{
+          boxShadow: '0 0 15px rgba(229, 231, 235, 0.6), inset -2px -2px 0 rgba(156, 163, 175, 0.3)'
+        }}
+        animate={{
+          scale: [1, 1.05, 1],
+          boxShadow: [
+            '0 0 15px rgba(229, 231, 235, 0.6), inset -2px -2px 0 rgba(156, 163, 175, 0.3)',
+            '0 0 20px rgba(229, 231, 235, 0.8), inset -2px -2px 0 rgba(156, 163, 175, 0.4)',
+            '0 0 15px rgba(229, 231, 235, 0.6), inset -2px -2px 0 rgba(156, 163, 175, 0.3)'
+          ]
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity
+        }}
+      />
+      
+      {/* Stars */}
+      {Array.from({ length: 6 }).map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-1 h-1 bg-gray-200 rounded-full"
+          style={{
+            top: `${15 + Math.random() * 60}%`,
+            left: `${10 + Math.random() * 70}%`,
+          }}
+          animate={{
+            opacity: [0.3, 0.8, 0.3],
+            scale: [0.5, 1, 0.5]
+          }}
+          transition={{
+            duration: 2 + Math.random() * 2,
+            repeat: Infinity,
+            delay: i * 0.5
+          }}
+        />
+      ))}
+    </div>
+  )
 }
 
-// Get dominant weather for entire day
-export const getDayWeather = (day: string): 'sunny' | 'rainy' | 'snowy' | 'cloudy' => {
-  const mockWeatherData: Record<string, Record<string, string>> = {
-    saturday: {
-      '6:00 AM': 'sunny',
-      '7:00 AM': 'sunny',
-      '8:00 AM': 'sunny',
-      '9:00 AM': 'cloudy',
-      '10:00 AM': 'cloudy',
-      '11:00 AM': 'rainy',
-      '12:00 PM': 'rainy',
-      '1:00 PM': 'rainy',
-      '2:00 PM': 'cloudy',
-      '3:00 PM': 'sunny',
-      '4:00 PM': 'sunny',
-      '5:00 PM': 'sunny'
-    },
-    sunday: {
-      '6:00 AM': 'cloudy',
-      '7:00 AM': 'cloudy',
-      '8:00 AM': 'sunny',
-      '9:00 AM': 'sunny',
-      '10:00 AM': 'sunny',
-      '11:00 AM': 'sunny',
-      '12:00 PM': 'sunny',
-      '1:00 PM': 'cloudy',
-      '2:00 PM': 'snowy',
-      '3:00 PM': 'snowy',
-      '4:00 PM': 'cloudy',
-      '5:00 PM': 'cloudy'
-    }
+const PartlyCloudyNightAnimation: React.FC = () => {
+  return (
+    <div className="relative w-full h-full">
+      {/* Moon behind clouds */}
+      <motion.div
+        className="absolute w-5 h-5 bg-gray-100 rounded-full top-3 right-6 opacity-60"
+        style={{
+          boxShadow: '0 0 10px rgba(229, 231, 235, 0.4)'
+        }}
+        animate={{
+          opacity: [0.4, 0.7, 0.4],
+        }}
+        transition={{
+          duration: 5,
+          repeat: Infinity
+        }}
+      />
+      
+      {/* Night clouds */}
+      <motion.div
+        className="absolute w-8 h-3 bg-gray-400 rounded-full top-4 right-4 opacity-40"
+        animate={{
+          x: [-2, 2, -2],
+          opacity: [0.3, 0.5, 0.3]
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity
+        }}
+      />
+      
+      {/* Few visible stars */}
+      {Array.from({ length: 3 }).map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-0.5 h-0.5 bg-gray-300 rounded-full"
+          style={{
+            top: `${20 + i * 20}%`,
+            left: `${15 + i * 25}%`,
+          }}
+          animate={{
+            opacity: [0.2, 0.6, 0.2],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            delay: i * 1
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// Enhanced weather system with date-based realistic patterns
+export const getWeatherForTimeSlot = (timeSlot: string, day: string, selectedDate?: Date): 'sunny' | 'rainy' | 'snowy' | 'cloudy' | 'clear-night' | 'partly-cloudy-night' => {
+  const hour = parseInt(timeSlot.split(':')[0])
+  const isPM = timeSlot.includes('PM')
+  const hour24 = isPM && hour !== 12 ? hour + 12 : (!isPM && hour === 12 ? 0 : hour)
+  
+  // Determine if it's night time (6 PM - 6 AM)
+  const isNightTime = hour24 >= 18 || hour24 < 6
+  
+  // Get date-based weather pattern (more realistic than random)
+  const currentDate = selectedDate || new Date()
+  const dateStr = currentDate.toISOString().split('T')[0] // YYYY-MM-DD
+  const dateHash = hashString(dateStr + day + timeSlot) // Create consistent hash for this date/time
+  
+  // Get base weather pattern for this date
+  const baseWeather = getDateBasedWeather(currentDate, dateHash)
+  
+  // If night time, convert to night variants
+  if (isNightTime) {
+    return convertToNightWeather(baseWeather, dateHash)
   }
+  
+  return baseWeather
+}
 
-  const dayData = mockWeatherData[day]
-  if (!dayData) return 'sunny'
+// Create consistent hash from string for deterministic weather
+const hashString = (str: string): number => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  return Math.abs(hash)
+}
 
-  // Count occurrences of each weather type
-  const weatherCounts: Record<string, number> = {}
-  Object.values(dayData).forEach(weather => {
-    weatherCounts[weather] = (weatherCounts[weather] || 0) + 1
-  })
+// Get realistic weather based on date and season
+const getDateBasedWeather = (date: Date, hash: number): 'sunny' | 'rainy' | 'snowy' | 'cloudy' => {
+  const month = date.getMonth() + 1 // 1-12
+  const day = date.getDate()
+  
+  // Seasonal weather patterns
+  let weatherProbabilities = { sunny: 40, cloudy: 30, rainy: 25, snowy: 5 }
+  
+  // Winter (Dec, Jan, Feb) - more snow and clouds
+  if (month === 12 || month <= 2) {
+    weatherProbabilities = { sunny: 20, cloudy: 35, rainy: 20, snowy: 25 }
+  }
+  // Spring (Mar, Apr, May) - more rainy days
+  else if (month >= 3 && month <= 5) {
+    weatherProbabilities = { sunny: 35, cloudy: 25, rainy: 35, snowy: 5 }
+  }
+  // Summer (Jun, Jul, Aug) - mostly sunny
+  else if (month >= 6 && month <= 8) {
+    weatherProbabilities = { sunny: 60, cloudy: 20, rainy: 15, snowy: 5 }
+  }
+  // Fall (Sep, Oct, Nov) - mixed with more clouds
+  else if (month >= 9 && month <= 11) {
+    weatherProbabilities = { sunny: 30, cloudy: 40, rainy: 25, snowy: 5 }
+  }
+  
+  // Create day-specific consistency (same weather pattern for the day)
+  const dayHash = hash % 100
+  
+  if (dayHash < weatherProbabilities.sunny) return 'sunny'
+  if (dayHash < weatherProbabilities.sunny + weatherProbabilities.cloudy) return 'cloudy'  
+  if (dayHash < weatherProbabilities.sunny + weatherProbabilities.cloudy + weatherProbabilities.rainy) return 'rainy'
+  return 'snowy'
+}
 
-  // Return the most frequent weather type
-  const dominantWeather = Object.entries(weatherCounts)
-    .sort(([,a], [,b]) => b - a)[0][0]
+// Convert day weather to night weather
+const convertToNightWeather = (dayWeather: string, hash: number): 'clear-night' | 'partly-cloudy-night' => {
+  const nightHash = hash % 100
+  
+  switch (dayWeather) {
+    case 'sunny':
+      return 'clear-night'
+    case 'cloudy':
+      return 'partly-cloudy-night'
+    case 'rainy':
+      // Night rain becomes partly cloudy night (rain stops at night often)
+      return nightHash > 60 ? 'clear-night' : 'partly-cloudy-night'
+    case 'snowy':
+      return 'partly-cloudy-night'
+    default:
+      return 'clear-night'
+  }
+}
 
-  return dominantWeather as 'sunny' | 'rainy' | 'snowy' | 'cloudy'
+// Get dominant weather for entire day (updated for new system)
+export const getDayWeather = (day: string, selectedDate?: Date): 'sunny' | 'rainy' | 'snowy' | 'cloudy' => {
+  const currentDate = selectedDate || new Date()
+  const dateStr = currentDate.toISOString().split('T')[0]
+  const dateHash = hashString(dateStr + day)
+  
+  return getDateBasedWeather(currentDate, dateHash)
 }
