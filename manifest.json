@@ -1,0 +1,41 @@
+{
+  "name": "Weekendly - Weekend Planner",
+  "short_name": "Weekendly",
+  "description": "A sophisticated weekend planning application with offline capabilities",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F0FDF4",
+  "theme_color": "#059669",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["productivity", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "features": [
+    "offline",
+    "responsive",
+    "drag-and-drop",
+    "weather-integration"
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile.jpg", 
+      "sizes": "390x844",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
+    }
+  ]
+}
