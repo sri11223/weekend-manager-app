@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { ScheduledActivity, Activity } from '../types/index'
-import { databaseService } from '../services/database/DatabaseService'
+import { ScheduledActivity, Activity } from '../types'
 
 // Using global ScheduledActivity type from types/index.ts
 
@@ -9,14 +8,14 @@ interface ScheduleState {
   // Store activities by weekend date keys (e.g., "2024-09-14_2024-09-15")
   weekendActivities: { [weekendKey: string]: ScheduledActivity[] }
   
-  // Current selected weekend
-  currentWeekend: { saturday: Date, sunday: Date }
+  // Current selected weekend (can be Date objects or strings after persistence)
+  currentWeekend: { saturday: Date | string, sunday: Date | string }
   
   // Methods to work with date-specific storage
   setCurrentWeekend: (saturday: Date, sunday: Date) => void
   addActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday') => boolean
   removeActivity: (activityId: string) => void
-  moveActivity: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday') => boolean
+  moveActivity: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday' | 'friday' | 'monday') => boolean
   getActivitiesForDay: (day: 'saturday' | 'sunday') => ScheduledActivity[]
   getActivitiesForSlot: (day: 'saturday' | 'sunday', timeSlot: string) => ScheduledActivity[]
   isSlotOccupied: (day: 'saturday' | 'sunday', timeSlot: string) => boolean
@@ -50,7 +49,7 @@ const getTimeSlotsBetween = (startTime: string, endTime: string): string[] => {
 }
 
 // Helper function to check if any time slots in a range are occupied
-const areSlotsBetweenOccupied = (currentActivities: ScheduledActivity[], startTime: string, endTime: string, day: 'saturday' | 'sunday'): boolean => {
+const areSlotsBetweenOccupied = (currentActivities: ScheduledActivity[], startTime: string, endTime: string, day: 'saturday' | 'sunday' | 'friday' | 'monday'): boolean => {
   const slotsInRange = getTimeSlotsBetween(startTime, endTime)
   
   return slotsInRange.some(slot => 
@@ -62,9 +61,14 @@ const areSlotsBetweenOccupied = (currentActivities: ScheduledActivity[], startTi
 }
 
 // Helper function to generate weekend key for storage
-const getWeekendKey = (saturday: Date, sunday: Date): string => {
-  const satKey = saturday.toISOString().split('T')[0] // YYYY-MM-DD
-  const sunKey = sunday.toISOString().split('T')[0]
+const getWeekendKey = (saturday: Date | string, sunday: Date | string): string => {
+  // Handle both Date objects and string representations
+  const satKey = saturday instanceof Date 
+    ? saturday.toISOString().split('T')[0] 
+    : new Date(saturday).toISOString().split('T')[0]
+  const sunKey = sunday instanceof Date 
+    ? sunday.toISOString().split('T')[0] 
+    : new Date(sunday).toISOString().split('T')[0]
   return `${satKey}_${sunKey}`
 }
 
@@ -94,8 +98,17 @@ export const useScheduleStore = create<ScheduleState>()(
 
         getCurrentWeekendActivities: () => {
           const state = get()
-          const weekendKey = getWeekendKey(state.currentWeekend.saturday, state.currentWeekend.sunday)
-          return state.weekendActivities[weekendKey] || []
+          try {
+            const weekendKey = getWeekendKey(state.currentWeekend.saturday, state.currentWeekend.sunday)
+            return state.weekendActivities[weekendKey] || []
+          } catch (error) {
+            console.warn('Error getting current weekend activities, using fallback:', error)
+            // Fallback: reinitialize with current weekend if dates are corrupted
+            const { saturday, sunday } = getCurrentWeekend()
+            set({ currentWeekend: { saturday, sunday } })
+            const weekendKey = getWeekendKey(saturday, sunday)
+            return state.weekendActivities[weekendKey] || []
+          }
         },
 
         addActivity: (activity, timeSlot, day) => {
@@ -114,9 +127,11 @@ export const useScheduleStore = create<ScheduleState>()(
           }
           
           // Create the main scheduled activity
+          const newId = `${activity.id}-${Date.now()}`
           const scheduledActivity: any = {
             ...activity,
-            id: `${activity.id}-${Date.now()}`,
+            id: newId,
+            scheduledId: newId, // Ensure scheduledId matches id
             title: activity.name, // Convert name to title for timeline compatibility
             timeSlot: timeSlot,
             day,
@@ -134,9 +149,11 @@ export const useScheduleStore = create<ScheduleState>()(
             
             // Create blocking activities for each subsequent slot (skip the first one)
             for (let i = 1; i < occupiedSlots.length; i++) {
+              const blockingId = `${activity.id}-${Date.now()}-block-${i}`
               const blockingActivity: any = {
                 ...activity,
-                id: `${activity.id}-${Date.now()}-block-${i}`,
+                id: blockingId,
+                scheduledId: blockingId, // Ensure scheduledId matches id
                 title: activity.name,
                 timeSlot: occupiedSlots[i],
                 day,
@@ -144,7 +161,7 @@ export const useScheduleStore = create<ScheduleState>()(
                 endTime: endTime,
                 isBlocked: true, // Mark as a continuation/blocking slot
                 isMainActivity: false,
-                parentActivityId: scheduledActivity.id, // Reference to main activity
+                parentActivityId: newId, // Reference to main activity using the consistent ID
                 spansDuration: false
               }
               activitiesToAdd.push(blockingActivity)
@@ -170,56 +187,158 @@ export const useScheduleStore = create<ScheduleState>()(
           // Find the activity to remove
           const activityToRemove = currentActivities.find(a => a.id === activityId || a.scheduledId === activityId)
           
-          if (!activityToRemove) return
+          if (!activityToRemove) {
+            console.log(`❌ Activity not found for ID: ${activityId}`)
+            return
+          }
           
-          // If removing a main activity, also remove all its blocking activities
-          // If removing a blocking activity, remove the main activity and all related blocks
-          const mainActivityId = activityToRemove.isMainActivity 
-            ? activityToRemove.id 
-            : activityToRemove.parentActivityId
+          // Determine which activities to remove
+          let activitiesToRemove: string[] = []
+          
+          if (activityToRemove.isMainActivity) {
+            // Removing a main activity - also remove all its blocking activities
+            const mainId = activityToRemove.id
+            activitiesToRemove = currentActivities
+              .filter(a => a.id === mainId || a.parentActivityId === mainId)
+              .map(a => a.id)
+          } else if (activityToRemove.isBlocked && activityToRemove.parentActivityId) {
+            // Removing a blocking activity - remove the main activity and all related blocks
+            const parentId = activityToRemove.parentActivityId
+            activitiesToRemove = currentActivities
+              .filter(a => a.id === parentId || a.parentActivityId === parentId)
+              .map(a => a.id)
+          } else {
+            // Regular single activity
+            activitiesToRemove = [activityToRemove.id]
+          }
+          
+          // Also include scheduledId matching for backward compatibility
+          const scheduledIdsToRemove = [activityId]
           
           set(state => ({
             weekendActivities: {
               ...state.weekendActivities,
               [weekendKey]: currentActivities.filter(a => 
-                a.id !== activityId && 
-                a.scheduledId !== activityId &&
-                a.id !== mainActivityId &&
-                a.parentActivityId !== mainActivityId
+                !activitiesToRemove.includes(a.id) && 
+                !scheduledIdsToRemove.includes(a.scheduledId || '') &&
+                !scheduledIdsToRemove.includes(a.id)
               )
             }
           }))
           
-          console.log(`✅ Removed activity and all related blocking slots for ID: ${activityId}`)
+          console.log(`✅ Removed ${activitiesToRemove.length} activity/activities for ID: ${activityId}`)
         },
 
         moveActivity: (activityId, newTimeSlot, newDay) => {
           const state = get()
           const weekendKey = getWeekendKey(state.currentWeekend.saturday, state.currentWeekend.sunday)
           const currentActivities = state.weekendActivities[weekendKey] || []
-          const activity = currentActivities.find(a => a.id === activityId || a.scheduledId === activityId)
+          const activity = currentActivities.find(a => a.scheduledId === activityId || a.id === activityId)
           
-          if (!activity) return false
+          if (!activity) {
+            console.log(`❌ Activity not found for move: ${activityId}`)
+            return false
+          }
           
-          // Check if new slot is available
-          const conflictingActivity = currentActivities.find(
-            a => (a.id !== activityId && a.scheduledId !== activityId) && 
-                 (a.startTime === newTimeSlot || (a as any).timeSlot === newTimeSlot) && a.day === newDay
-          )
+          // Calculate new end time and check for conflicts
+          const newEndTime = calculateEndTime(newTimeSlot, activity.duration)
+          const durationHours = Math.ceil(activity.duration / 60)
           
-          if (conflictingActivity) return false
+          // Check if any slots in the new time range are occupied (excluding current activity group)
+          if (areSlotsBetweenOccupied(currentActivities, newTimeSlot, newEndTime, newDay)) {
+            // Filter out activities that belong to the current activity group before checking conflicts
+            const otherActivities = currentActivities.filter(a => {
+              // Exclude the main activity and its blocking activities
+              const isMainActivity = a.id === activityId || a.scheduledId === activityId
+              const isBlockingActivity = activity.isMainActivity 
+                ? a.parentActivityId === activity.id
+                : a.parentActivityId === activity.parentActivityId || a.id === activity.parentActivityId
+              return !isMainActivity && !isBlockingActivity
+            })
+            
+            if (areSlotsBetweenOccupied(otherActivities, newTimeSlot, newEndTime, newDay)) {
+              console.log(`❌ New time slot range is occupied`)
+              return false
+            }
+          }
+          
+          // Step 1: Remove the old activity and all its related blocking activities
+          let activitiesToRemove: string[] = []
+          
+          if (activity.isMainActivity) {
+            // Moving a main activity - remove it and all its blocks
+            const mainId = activity.scheduledId || activity.id
+            activitiesToRemove = currentActivities
+              .filter(a => (a.scheduledId || a.id) === mainId || a.parentActivityId === mainId)
+              .map(a => a.scheduledId || a.id)
+          } else if (activity.isBlocked && activity.parentActivityId) {
+            // Moving a blocking activity - remove the main activity and all related blocks
+            const parentId = activity.parentActivityId
+            activitiesToRemove = currentActivities
+              .filter(a => (a.scheduledId || a.id) === parentId || a.parentActivityId === parentId)
+              .map(a => a.scheduledId || a.id)
+          } else {
+            // Regular single activity
+            activitiesToRemove = [activity.scheduledId || activity.id]
+          }
+          
+          // Get the original activity data for recreation
+          const originalActivity = activity.isMainActivity ? activity : currentActivities.find(a => (a.scheduledId || a.id) === activity.parentActivityId)
+          if (!originalActivity) {
+            console.log(`❌ Could not find original activity data`)
+            return false
+          }
+          
+          // Step 2: Create new activity and blocking slots in the new position
+          const newMainId = `${originalActivity.id.split('-')[0]}-${Date.now()}-moved`
+          const newMainActivity: ScheduledActivity = {
+            ...originalActivity,
+            id: newMainId,
+            scheduledId: newMainId,
+            day: newDay,
+            startTime: newTimeSlot,
+            endTime: newEndTime,
+            isMainActivity: true,
+            isBlocked: false,
+            parentActivityId: undefined,
+            spansDuration: durationHours > 1
+          }
+          
+          const newActivities = [newMainActivity]
+          
+          // Create new blocking activities if needed
+          if (durationHours > 1) {
+            const occupiedSlots = getTimeSlotsBetween(newTimeSlot, newEndTime)
+            
+            for (let i = 1; i < occupiedSlots.length; i++) {
+              const blockingId = `${newMainId}-block-${i}`
+              const blockingActivity: ScheduledActivity = {
+                ...originalActivity,
+                id: blockingId,
+                scheduledId: blockingId,
+                day: newDay,
+                startTime: occupiedSlots[i],
+                endTime: newEndTime,
+                isBlocked: true,
+                isMainActivity: false,
+                parentActivityId: newMainId,
+                spansDuration: false
+              }
+              newActivities.push(blockingActivity)
+            }
+          }
+          
+          // Step 3: Update the store
+          const otherActivities = currentActivities.filter(a => !activitiesToRemove.includes(a.scheduledId || a.id))
           
           set(state => ({
             weekendActivities: {
               ...state.weekendActivities,
-              [weekendKey]: currentActivities.map(a =>
-                (a.id === activityId || a.scheduledId === activityId)
-                  ? { ...a, day: newDay, startTime: newTimeSlot, timeSlot: newTimeSlot, endTime: calculateEndTime(newTimeSlot, a.duration) }
-                  : a
-              )
+              [weekendKey]: [...otherActivities, ...newActivities]
             }
           }))
           
+          console.log(`✅ Moved activity "${originalActivity.name}" from ${activity.startTime} to ${newTimeSlot}, spanning ${durationHours} hour(s)`)
           return true
         },
 

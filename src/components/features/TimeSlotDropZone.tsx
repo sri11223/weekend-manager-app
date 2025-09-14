@@ -93,4 +93,4 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
   )
 }
 
-export default TimeSlotDropZone
+export default React.memo(TimeSlotDropZone)

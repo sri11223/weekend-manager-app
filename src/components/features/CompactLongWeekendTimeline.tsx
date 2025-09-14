@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Clock, Plus, X, Star } from 'lucide-react'
+import { Calendar, Clock, Plus, X, Star, GripVertical } from 'lucide-react'
+import { useDrag, useDrop } from 'react-dnd'
 import { useWeekendStore } from '../../store/weekendStore'
 import { useTheme } from '../../hooks/useTheme'
 
@@ -34,6 +35,184 @@ const DAY_NAMES = {
   monday: 'Monday'
 }
 
+// Draggable Activity Component
+interface DraggableLongWeekendActivityProps {
+  activity: LongWeekendActivity
+  onRemove: (activityId: string) => void
+  currentTheme: any
+}
+
+const DraggableLongWeekendActivity: React.FC<DraggableLongWeekendActivityProps> = ({
+  activity,
+  onRemove,
+  currentTheme
+}) => {
+  const [{ isDragging }, drag] = useDrag({
+    type: 'long-weekend-activity',
+    item: activity,
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  })
+
+  return (
+    <div
+      ref={drag as any}
+      className={`flex items-center justify-between p-2 rounded-lg cursor-move transition-all ${
+        isDragging ? 'opacity-50 scale-105' : ''
+      }`}
+      style={{ backgroundColor: `${currentTheme.colors.primary}20` }}
+    >
+      <div className="flex items-center gap-2">
+        <GripVertical className="w-3 h-3 text-gray-400" />
+        <div>
+          <div 
+            className="font-medium text-sm"
+            style={{ color: currentTheme.colors.text }}
+          >
+            {activity.title}
+          </div>
+          <div 
+            className="text-xs"
+            style={{ color: currentTheme.colors.textSecondary }}
+          >
+            {activity.duration}min • {activity.category}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onRemove(activity.id)
+        }}
+        className="p-1 rounded hover:bg-red-100 transition-colors"
+      >
+        <X className="w-3 h-3 text-red-500" />
+      </button>
+    </div>
+  )
+}
+
+// Droppable Time Slot Component  
+interface DroppableTimeSlotProps {
+  day: string
+  timeSlot: any
+  activities: LongWeekendActivity[]
+  onAddActivity: (day: string, timeSlot: string) => void
+  onMoveActivity: (activity: LongWeekendActivity, newDay: string, newTimeSlot: string) => void
+  onRemoveActivity: (activityId: string) => void
+  currentTheme: any
+}
+
+const DroppableTimeSlot: React.FC<DroppableTimeSlotProps> = ({
+  day,
+  timeSlot,
+  activities,
+  onAddActivity,
+  onMoveActivity,
+  onRemoveActivity,
+  currentTheme
+}) => {
+  const [{ isOver, canDrop }, drop] = useDrop({
+    accept: ['long-weekend-activity', 'activity'],
+    drop: (item: any) => {
+      if (item.type === 'long-weekend-activity' || item.day) {
+        // Moving existing long weekend activity
+        onMoveActivity(item, day, timeSlot.id)
+      } else {
+        // Adding new activity from browser
+        const newActivity: LongWeekendActivity = {
+          id: `${item.id}-${Date.now()}`,
+          title: item.title,
+          description: item.description,
+          duration: item.duration,
+          category: item.category,
+          day,
+          timeSlot: timeSlot.id,
+          cost: item.cost
+        }
+        onMoveActivity(newActivity, day, timeSlot.id)
+      }
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop(),
+    }),
+  })
+
+  const hasActivity = activities.length > 0
+
+  return (
+    <motion.div
+      ref={drop as any}
+      className={`min-h-[120px] rounded-2xl border-2 border-dashed transition-all cursor-pointer ${
+        isOver && canDrop
+          ? 'border-blue-400 bg-blue-50'
+          : hasActivity
+          ? 'border-gray-200 bg-white shadow-sm'
+          : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+      }`}
+      whileHover={{ scale: 1.02 }}
+      onClick={() => !hasActivity && onAddActivity(day, timeSlot.id)}
+    >
+      {/* Time Slot Header */}
+      <div className="p-3 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4" style={{ color: currentTheme.colors.primary }} />
+          <span 
+            className="text-xs font-medium"
+            style={{ color: currentTheme.colors.text }}
+          >
+            {timeSlot.period}
+          </span>
+        </div>
+        <span 
+          className="text-xs"
+          style={{ color: currentTheme.colors.textSecondary }}
+        >
+          {timeSlot.label}
+        </span>
+      </div>
+
+      {/* Activities or Add Button */}
+      {hasActivity ? (
+        <div className="p-3 space-y-2">
+          {activities.map((activity) => (
+            <DraggableLongWeekendActivity
+              key={activity.id}
+              activity={activity}
+              onRemove={onRemoveActivity}
+              currentTheme={currentTheme}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full text-center p-3">
+          {isOver && canDrop ? (
+            <div className="flex flex-col items-center">
+              <Plus className="w-8 h-8 mb-2 text-blue-500" />
+              <span className="text-sm text-blue-600 font-medium">Drop here to schedule</span>
+            </div>
+          ) : (
+            <>
+              <Plus 
+                className="w-8 h-8 mb-2 opacity-50"
+                style={{ color: currentTheme.colors.textSecondary }}
+              />
+              <span 
+                className="text-sm opacity-50"
+                style={{ color: currentTheme.colors.textSecondary }}
+              >
+                Add activity
+              </span>
+            </>
+          )}
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
 const CompactLongWeekendTimeline: React.FC<CompactLongWeekendTimelineProps> = ({
   isVisible,
   onClose,
@@ -57,6 +236,22 @@ const CompactLongWeekendTimeline: React.FC<CompactLongWeekendTimelineProps> = ({
 
   const handleRemoveActivity = (activityId: string) => {
     setSelectedActivities(prev => prev.filter(a => a.id !== activityId))
+  }
+
+  const handleMoveActivity = (activity: LongWeekendActivity, newDay: string, newTimeSlot: string) => {
+    setSelectedActivities(prev => {
+      // Remove activity from its current position if it exists
+      const filteredActivities = prev.filter(a => a.id !== activity.id)
+      
+      // Add activity to new position
+      const updatedActivity = {
+        ...activity,
+        day: newDay,
+        timeSlot: newTimeSlot
+      }
+      
+      return [...filteredActivities, updatedActivity]
+    })
   }
 
   const getActivitiesForSlot = (day: string, timeSlot: string) => {
@@ -156,93 +351,18 @@ const CompactLongWeekendTimeline: React.FC<CompactLongWeekendTimelineProps> = ({
                 <div className="space-y-3">
                   {COMPACT_TIME_SLOTS.map((timeSlot) => {
                     const activities = getActivitiesForSlot(day, timeSlot.id)
-                    const hasActivity = activities.length > 0
 
                     return (
-                      <motion.div
+                      <DroppableTimeSlot
                         key={`${day}-${timeSlot.id}`}
-                        className="border rounded-xl p-4 min-h-[120px] cursor-pointer transition-all duration-200"
-                        style={{
-                          backgroundColor: hasActivity 
-                            ? `${currentTheme.colors.primary}10` 
-                            : currentTheme.colors.background,
-                          borderColor: hasActivity 
-                            ? currentTheme.colors.primary 
-                            : currentTheme.colors.border,
-                        }}
-                        onClick={() => handleAddActivity(day, timeSlot.id)}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        {/* Time Slot Header */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" style={{ color: currentTheme.colors.primary }} />
-                            <span 
-                              className="font-medium text-sm"
-                              style={{ color: currentTheme.colors.text }}
-                            >
-                              {timeSlot.period}
-                            </span>
-                          </div>
-                          <span 
-                            className="text-xs"
-                            style={{ color: currentTheme.colors.textSecondary }}
-                          >
-                            {timeSlot.label}
-                          </span>
-                        </div>
-
-                        {/* Activities or Add Button */}
-                        {hasActivity ? (
-                          <div className="space-y-2">
-                            {activities.map((activity) => (
-                              <div
-                                key={activity.id}
-                                className="flex items-center justify-between p-2 rounded-lg"
-                                style={{ backgroundColor: `${currentTheme.colors.primary}20` }}
-                              >
-                                <div>
-                                  <div 
-                                    className="font-medium text-sm"
-                                    style={{ color: currentTheme.colors.text }}
-                                  >
-                                    {activity.title}
-                                  </div>
-                                  <div 
-                                    className="text-xs"
-                                    style={{ color: currentTheme.colors.textSecondary }}
-                                  >
-                                    {activity.duration}min • {activity.category}
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleRemoveActivity(activity.id)
-                                  }}
-                                  className="p-1 rounded hover:bg-red-100 transition-colors"
-                                >
-                                  <X className="w-3 h-3 text-red-500" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-full text-center">
-                            <Plus 
-                              className="w-8 h-8 mb-2 opacity-50"
-                              style={{ color: currentTheme.colors.textSecondary }}
-                            />
-                            <span 
-                              className="text-sm opacity-50"
-                              style={{ color: currentTheme.colors.textSecondary }}
-                            >
-                              Add activity
-                            </span>
-                          </div>
-                        )}
-                      </motion.div>
+                        day={day}
+                        timeSlot={timeSlot}
+                        activities={activities}
+                        onAddActivity={handleAddActivity}
+                        onMoveActivity={handleMoveActivity}
+                        onRemoveActivity={handleRemoveActivity}
+                        currentTheme={currentTheme}
+                      />
                     )
                   })}
                 </div>

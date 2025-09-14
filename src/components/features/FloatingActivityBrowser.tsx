@@ -1,10 +1,10 @@
 // src/features/FloatingActivityBrowser.tsx - UPDATED WITH MOCK DATA
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { X, Search, Clock, Heart } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Activity } from './DraggableActivityCard'
 import DraggableActivityItem from './DraggableActivityItem'
-import { useDrop } from 'react-dnd'
+import { useDrop, useDrag } from 'react-dnd'
 import { MockActivityService } from '../../data/mockActivities'
 import { AVAILABLE_VIBES } from './MoodVibeTracker'
 
@@ -21,6 +21,7 @@ interface FloatingActivityBrowserProps {
   searchQuery?: string
   onAddActivity?: (activity: any, timeSlot: string, day: 'saturday' | 'sunday') => boolean
   onRemoveActivity?: (activityId: string) => void
+  onMoveActivity?: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday') => boolean
   scheduledActivities?: any[]
   themeId?: string
   selectedWeekend?: {
@@ -264,15 +265,15 @@ const TIME_SLOT_MAP = [
   { display: '11:00 PM', id: '11pm' }
 ]
 
-const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
+export const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   category,
   onClose,
   searchQuery = '',
   onAddActivity,
   onRemoveActivity,
+  onMoveActivity,
   scheduledActivities = [],
-  themeId = 'adventurous',
-  selectedWeekend
+  themeId: externalThemeId
 }) => {
   const [activities, setActivities] = useState<ExtendedActivity[]>([])
   const [loading, setLoading] = useState(true)
@@ -283,6 +284,7 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   const [showVibeFilter, setShowVibeFilter] = useState(false)
 
   // ✅ THEME-AWARE CONFIG
+  const themeId = externalThemeId || 'defaultTheme'
   const config = getThemeCategoryConfig(category, themeId)
 
   // ✅ FORMAT DATES FOR DISPLAY
@@ -293,18 +295,15 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
     })
   }
 
-  // ✅ GET CURRENT WEEKEND DATES OR FALLBACK TO DEFAULT
+  // ✅ GET CURRENT WEEKEND DATES OR FALLBACK TO DEFAULT  
+  const selectedWeekend = null
   const currentWeekend = selectedWeekend || {
     saturday: new Date(2025, 8, 14), // Sep 14, 2025
     sunday: new Date(2025, 8, 15)    // Sep 15, 2025
   }
 
   // ✅ LOAD ACTIVITIES FROM MOCK DATA
-  useEffect(() => {
-    loadMockActivities()
-  }, [category, themeId, localSearch, filter, selectedVibes])
-
-  const loadMockActivities = () => {
+  const loadMockActivities = useCallback(() => {
     try {
       setLoading(true)
       console.log(`🎨 Loading ${category} activities from mock data for theme: ${themeId}`)
@@ -382,7 +381,11 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
       setActivities([])
       setLoading(false)
     }
-  }
+  }, [category, themeId, localSearch, filter, selectedVibes])
+
+  useEffect(() => {
+    loadMockActivities()
+  }, [loadMockActivities])
 
   // ✅ SYNC HELPER FUNCTIONS
   const convertTimeToId = (timeString: string): string => {
@@ -778,6 +781,7 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
                         isOccupied={isOccupied}
                         onAddActivity={handleScheduleActivity}
                         onRemoveActivity={onRemoveActivity}
+                        onMoveActivity={onMoveActivity}
                       />
                     )
                   })}
@@ -791,6 +795,52 @@ const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = ({
   )
 }
 
+// Draggable wrapper for scheduled activities in timeline
+interface DraggableScheduledActivityProps {
+  activity: any
+  day: 'saturday' | 'sunday'
+  timeSlotId: string
+  dayColor: string
+  onRemoveActivity?: (activityId: string) => void
+  children: React.ReactNode
+}
+
+const DraggableScheduledActivityWrapper: React.FC<DraggableScheduledActivityProps> = ({
+  activity,
+  day,
+  timeSlotId,
+  children,
+  onRemoveActivity
+}) => {
+  const [{ isDragging }, drag] = useDrag({
+    type: 'scheduled-activity',
+    item: {
+      type: 'scheduled-activity',
+      id: activity.scheduledId || activity.id,
+      originalDay: day,
+      originalTimeSlot: timeSlotId,
+      activity: activity
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  })
+
+  if (activity.isBlocked) {
+    // Don't make blocked activities draggable
+    return <>{children}</>
+  }
+
+  return (
+    <div
+      ref={drag as any}
+      className={`cursor-move ${isDragging ? 'opacity-50' : ''}`}
+    >
+      {children}
+    </div>
+  )
+}
+
 // ✅ KEEP THE EXISTING SYNCHRONIZED TIME SLOT DROP ZONE COMPONENT
 interface SynchronizedTimeSlotDropZoneProps {
   time: string
@@ -800,21 +850,32 @@ interface SynchronizedTimeSlotDropZoneProps {
   isOccupied: boolean
   onAddActivity: (activity: any, day: 'saturday' | 'sunday', timeSlot: string) => void
   onRemoveActivity?: (activityId: string) => void
+  onMoveActivity?: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday') => boolean
 }
 
 const SynchronizedTimeSlotDropZone: React.FC<SynchronizedTimeSlotDropZoneProps> = ({
   time,
+  timeSlotId,
   day,
   activity,
   isOccupied,
   onAddActivity,
-  onRemoveActivity
+  onRemoveActivity,
+  onMoveActivity
 }) => {
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: 'activity',
     drop: (item: Activity) => {
       if (!isOccupied) {
-        onAddActivity(item, day, time)
+        // Check if this is a scheduled activity being moved
+        const scheduledItem = item as any
+        if (scheduledItem.scheduledId && onMoveActivity) {
+          console.log('🔄 Moving activity in popup timeline:', scheduledItem.scheduledId, 'to', time, day)
+          onMoveActivity(scheduledItem.scheduledId, time, day)
+        } else {
+          // This is a new activity being added
+          onAddActivity(item, day, time)
+        }
       }
     },
     canDrop: () => !isOccupied,
@@ -867,7 +928,13 @@ const SynchronizedTimeSlotDropZone: React.FC<SynchronizedTimeSlotDropZoneProps> 
             <button 
               onClick={(e) => {
                 e.stopPropagation()
-                onRemoveActivity(activity.id)
+                console.log('🗑️ FloatingActivityBrowser removing activity:', {
+                  name: activity.name || activity.title,
+                  scheduledId: activity.scheduledId,
+                  id: activity.id,
+                  timeSlot: time
+                })
+                onRemoveActivity(activity.scheduledId || activity.id)
               }}
               className="p-1 rounded-full hover:bg-white/20 transition-colors group"
             >
@@ -880,62 +947,70 @@ const SynchronizedTimeSlotDropZone: React.FC<SynchronizedTimeSlotDropZoneProps> 
       {/* Content Area */}
       <div className="p-3">
         {activity ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-2"
+          <DraggableScheduledActivityWrapper
+            activity={activity}
+            day={day}
+            timeSlotId={timeSlotId}
+            dayColor={dayColor}
+            onRemoveActivity={onRemoveActivity}
           >
-            {activity.isBlocked ? (
-              <div className="text-center py-2">
-                <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-xs">⏳</span>
-                </div>
-                <p className="text-xs font-medium text-gray-600">Continued Activity</p>
-                <p className="text-xs text-gray-500">{activity.title}</p>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-start justify-between">
-                  <h4 className="font-bold text-gray-900 text-sm leading-tight flex-1">
-                    {activity.title}
-                  </h4>
-                  {activity.cost !== undefined && (
-                    <span className={`text-xs px-2 py-1 rounded-full font-bold ${
-                      activity.cost === 0 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {activity.cost === 0 ? 'FREE' : `$${activity.cost}`}
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                  {activity.description}
-                </p>
-
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Clock className="w-3 h-3" />
-                    <span className="font-medium">
-                      {Math.floor(activity.duration / 60)}h {activity.duration % 60}m
-                    </span>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-2"
+            >
+              {activity.isBlocked ? (
+                <div className="text-center py-2">
+                  <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-gray-200 flex items-center justify-center">
+                    <span className="text-xs">⏳</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {activity.category && (
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        dayColor === 'blue' 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'bg-purple-100 text-purple-700'
+                  <p className="text-xs font-medium text-gray-600">Continued Activity</p>
+                  <p className="text-xs text-gray-500">{activity.title}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between">
+                    <h4 className="font-bold text-gray-900 text-sm leading-tight flex-1">
+                      {activity.title}
+                    </h4>
+                    {activity.cost !== undefined && (
+                      <span className={`text-xs px-2 py-1 rounded-full font-bold ${
+                        activity.cost === 0 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-blue-100 text-blue-700'
                       }`}>
-                        {activity.category}
+                        {activity.cost === 0 ? 'FREE' : `$${activity.cost}`}
                       </span>
                     )}
                   </div>
-                </div>
-              </>
-            )}
-          </motion.div>
+
+                  <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                    {activity.description}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <Clock className="w-3 h-3" />
+                      <span className="font-medium">
+                        {Math.floor(activity.duration / 60)}h {activity.duration % 60}m
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {activity.category && (
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          dayColor === 'blue' 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {activity.category}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </DraggableScheduledActivityWrapper>
         ) : (
           <div className="text-center py-4">
             {isOccupied ? (
@@ -999,4 +1074,4 @@ const SynchronizedTimeSlotDropZone: React.FC<SynchronizedTimeSlotDropZoneProps> 
   )
 }
 
-export default FloatingActivityBrowser
+export default React.memo(FloatingActivityBrowser)

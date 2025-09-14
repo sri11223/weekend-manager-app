@@ -1,18 +1,94 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Clock, DollarSign, TrendingUp, X, Trash2 } from 'lucide-react'
+import { useDrag } from 'react-dnd'
+import { Calendar, Clock, DollarSign, TrendingUp, X, Trash2, GripVertical } from 'lucide-react'
 import { ScheduledActivity } from '../../types/index'
 import { useTheme } from '../../hooks/useTheme'
 
 interface PlanSummaryProps {
   scheduledActivities: ScheduledActivity[]
   onRemoveActivity?: (activityId: string) => void
+  onMoveActivity?: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday' | 'friday' | 'monday') => boolean
   className?: string
+}
+
+// Draggable Activity Item Component
+interface DraggableActivityItemProps {
+  activity: ScheduledActivity
+  onRemoveActivity?: (activityId: string) => void
+  currentTheme: any
+  formatDuration: (minutes: number) => string
+  getCategoryIcon: (category: string) => string
+}
+
+const DraggableActivityItem: React.FC<DraggableActivityItemProps> = ({
+  activity,
+  onRemoveActivity,
+  currentTheme,
+  formatDuration,
+  getCategoryIcon
+}) => {
+  const [{ isDragging }, drag] = useDrag({
+    type: 'scheduled-activity',
+    item: {
+      type: 'scheduled-activity',
+      id: activity.scheduledId || activity.id,
+      originalDay: activity.day,
+      originalTimeSlot: activity.startTime,
+      activity: activity
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  })
+
+  return (
+    <div
+      ref={drag as any}
+      className={`flex items-center gap-2 p-2 rounded-md group hover:bg-opacity-80 transition-all cursor-move ${
+        isDragging ? 'opacity-50 scale-95' : ''
+      }`}
+      style={{ backgroundColor: `${currentTheme.colors.surface}60` }}
+    >
+      <GripVertical className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <span className="text-sm flex-shrink-0">{getCategoryIcon(activity.category)}</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium truncate" style={{ color: currentTheme.colors.text }}>
+          {activity.name}
+        </div>
+        <div className="text-xs flex items-center gap-1 truncate" style={{ color: currentTheme.colors.textSecondary }}>
+          <span>{activity.startTime}</span>
+          <span>•</span>
+          <span>{formatDuration(activity.duration)}</span>
+          <span>•</span>
+          <span>${activity.cost || 0}</span>
+        </div>
+      </div>
+      {onRemoveActivity && (
+        <button
+          onClick={() => {
+            console.log('🗑️ PlanSummary removing activity:', {
+              name: activity.name,
+              scheduledId: activity.scheduledId,
+              id: activity.id,
+              startTime: activity.startTime
+            })
+            onRemoveActivity(activity.scheduledId || activity.id)
+          }}
+          className="opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity"
+          style={{ color: '#dc2626' }}
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  )
 }
 
 export const PlanSummary: React.FC<PlanSummaryProps> = ({ 
   scheduledActivities, 
   onRemoveActivity,
+  onMoveActivity,
   className = '' 
 }) => {
   const { currentTheme } = useTheme()
@@ -70,7 +146,8 @@ export const PlanSummary: React.FC<PlanSummaryProps> = ({
           <button
             onClick={() => {
               if (confirm('Clear all activities?')) {
-                mainActivities.forEach(activity => onRemoveActivity?.(activity.id))
+                console.log('🗑️ Clearing all activities:', mainActivities.map(a => ({ name: a.name, scheduledId: a.scheduledId, id: a.id })))
+                mainActivities.forEach(activity => onRemoveActivity?.(activity.scheduledId || activity.id))
               }
             }}
             className="text-xs px-2 py-1 rounded-md flex items-center gap-1 hover:opacity-80"
@@ -151,37 +228,17 @@ export const PlanSummary: React.FC<PlanSummaryProps> = ({
               </p>
             ) : (
               saturdayActivities
-                .sort((a, b) => (a.timeSlot || '').localeCompare(b.timeSlot || ''))
+                .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
                 .slice(0, 3) // Show only first 3 activities to prevent overflow
                 .map((activity) => (
-                  <div
+                  <DraggableActivityItem
                     key={activity.id}
-                    className="flex items-center gap-2 p-2 rounded-md group hover:bg-opacity-80 transition-colors"
-                    style={{ backgroundColor: `${currentTheme.colors.surface}60` }}
-                  >
-                    <span className="text-sm flex-shrink-0">{getCategoryIcon(activity.category)}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate" style={{ color: currentTheme.colors.text }}>
-                        {activity.title || activity.name}
-                      </div>
-                      <div className="text-xs flex items-center gap-1 truncate" style={{ color: currentTheme.colors.textSecondary }}>
-                        <span>{activity.timeSlot}</span>
-                        <span>•</span>
-                        <span>{formatDuration(activity.duration)}</span>
-                        <span>•</span>
-                        <span>${activity.cost || 0}</span>
-                      </div>
-                    </div>
-                    {onRemoveActivity && (
-                      <button
-                        onClick={() => onRemoveActivity(activity.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity"
-                        style={{ color: '#dc2626' }}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
+                    activity={activity}
+                    onRemoveActivity={onRemoveActivity}
+                    currentTheme={currentTheme}
+                    formatDuration={formatDuration}
+                    getCategoryIcon={getCategoryIcon}
+                  />
                 ))
             )}
             {/* Show "and X more" if there are more than 3 activities */}
@@ -218,37 +275,17 @@ export const PlanSummary: React.FC<PlanSummaryProps> = ({
               </p>
             ) : (
               sundayActivities
-                .sort((a, b) => (a.timeSlot || '').localeCompare(b.timeSlot || ''))
+                .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
                 .slice(0, 3) // Show only first 3 activities to prevent overflow
                 .map((activity) => (
-                  <div
+                  <DraggableActivityItem
                     key={activity.id}
-                    className="flex items-center gap-2 p-2 rounded-md group hover:bg-opacity-80 transition-colors"
-                    style={{ backgroundColor: `${currentTheme.colors.surface}60` }}
-                  >
-                    <span className="text-sm flex-shrink-0">{getCategoryIcon(activity.category)}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate" style={{ color: currentTheme.colors.text }}>
-                        {activity.title || activity.name}
-                      </div>
-                      <div className="text-xs flex items-center gap-1 truncate" style={{ color: currentTheme.colors.textSecondary }}>
-                        <span>{activity.timeSlot}</span>
-                        <span>•</span>
-                        <span>{formatDuration(activity.duration)}</span>
-                        <span>•</span>
-                        <span>${activity.cost || 0}</span>
-                      </div>
-                    </div>
-                    {onRemoveActivity && (
-                      <button
-                        onClick={() => onRemoveActivity(activity.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity"
-                        style={{ color: '#dc2626' }}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
+                    activity={activity}
+                    onRemoveActivity={onRemoveActivity}
+                    currentTheme={currentTheme}
+                    formatDuration={formatDuration}
+                    getCategoryIcon={getCategoryIcon}
+                  />
                 ))
             )}
             {/* Show "and X more" if there are more than 3 activities */}

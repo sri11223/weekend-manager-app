@@ -1,31 +1,14 @@
 import React, { useState } from 'react'
-import { useDrop } from 'react-dnd'
+import { useDrop, useDrag } from 'react-dnd'
 import { Clock, X, Plus } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { WeatherAnimation, getWeatherForTimeSlot } from '../animations/WeatherAnimations'
 import { DayNightBackground, getDayNightTheme, getDayNightColors } from '../animations/DayNightTheme'
 import StarryNightBackground from '../animations/StarryNightBackground'
 import { TIME_SLOTS, TimeSlot } from '../../types/theme'
+import { Activity, ScheduledActivity } from '../../types/index'
 import { useTheme } from '../../hooks/useTheme'
 import { useWeekendStore } from '../../store/weekendStore'
-
-interface Activity {
-  id: string
-  title: string
-  description: string
-  duration: number
-  category: string
-  image?: string
-  cost?: number
-  originalDuration?: number
-  isBlocked?: boolean
-  originalId?: string
-}
-
-interface ScheduledActivity extends Activity {
-  timeSlot: string
-  day: 'saturday' | 'sunday' | 'friday' | 'monday'
-}
 
 interface EnhancedWeekendTimelineProps {
   scheduledActivities: ScheduledActivity[]
@@ -52,6 +35,7 @@ interface TimeSlotDropZoneProps {
   isOccupied: boolean
   onAddActivity: (activity: Activity, timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => boolean
   onRemoveActivity: (activityId: string) => void
+  onMoveActivity?: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday' | 'friday' | 'monday') => boolean
   theme: any
   selectedDate?: Date
 }
@@ -63,14 +47,23 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
   isOccupied,
   onAddActivity,
   onRemoveActivity,
+  onMoveActivity,
   theme,
   selectedDate
 }) => {
   const [{ isOver, canDrop }, drop] = useDrop({
-    accept: 'activity',
-    drop: (item: Activity) => {
-      if (!isOccupied) {
-        onAddActivity(item, timeSlot.id, day)
+    accept: ['activity', 'scheduled-activity'],
+    drop: (item: any) => {
+      if (item.type === 'scheduled-activity') {
+        // Moving an existing scheduled activity
+        if (onMoveActivity && !isOccupied) {
+          onMoveActivity(item.id, timeSlot.id, day)
+        }
+      } else {
+        // Adding a new activity
+        if (!isOccupied) {
+          onAddActivity(item, timeSlot.id, day)
+        }
       }
     },
     canDrop: () => !isOccupied,
@@ -86,7 +79,7 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
 
   return (
     <div
-      ref={drop}
+      ref={drop as any}
       className="relative min-h-[100px] p-4 rounded-xl transition-all duration-300 backdrop-blur-sm overflow-hidden"
       style={{
         background: isOver && canDrop
@@ -174,7 +167,7 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
                     style={{ backgroundColor: theme.colors.primary }}
                   />
                   <p className="text-sm font-medium" style={{ color: theme.colors.text }}>
-                    {activity.title}
+                    {activity.name}
                   </p>
                   <div 
                     className="w-2 h-2 rounded-full animate-pulse"
@@ -187,81 +180,12 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
               </div>
             </div>
           ) : (
-            // Main activity display with spanning indicators
-            <div
-              className="p-4 rounded-xl shadow-lg border backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer group relative overflow-hidden"
-              style={{
-                background: `linear-gradient(135deg, ${theme.colors.surface}95, ${theme.colors.primary}15)`,
-                borderColor: `${theme.colors.primary}50`,
-                boxShadow: `0 8px 32px ${theme.colors.primary}20, 0 4px 16px rgba(0,0,0,0.1)`
-              }}
-            >
-              {/* Spanning activity indicator */}
-              {activity.duration && activity.duration > 60 && (
-                <div className="absolute top-0 right-0">
-                  <div 
-                    className="px-2 py-1 text-xs font-bold text-white rounded-bl-lg"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.primary})`
-                    }}
-                  >
-                    {Math.ceil(activity.duration / 60)}h
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-sm" style={{ color: theme.colors.text }}>
-                      {activity.title}
-                    </h4>
-                    {activity.duration && activity.duration > 60 && (
-                      <span 
-                        className="px-2 py-0.5 text-xs font-bold rounded-full"
-                        style={{ 
-                          backgroundColor: `${theme.colors.accent}20`,
-                          color: theme.colors.accent 
-                        }}
-                      >
-                        SPANS {Math.ceil(activity.duration / 60)}h
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs mb-2" style={{ color: theme.colors.textSecondary }}>
-                    {activity.description}
-                  </p>
-                  <div className="flex items-center gap-4 text-xs" style={{ color: theme.colors.textSecondary }}>
-                    {activity.duration && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span className="font-medium">
-                          {Math.floor(activity.duration / 60)}h {activity.duration % 60}m
-                        </span>
-                      </div>
-                    )}
-                    {activity.cost !== undefined && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-green-600 font-medium">${activity.cost}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onRemoveActivity(activity.id)
-                  }}
-                  className="p-2 rounded-full transition-all duration-200 hover:scale-110 opacity-0 group-hover:opacity-100"
-                  style={{
-                    background: 'linear-gradient(135deg, #ff4757, #ff3742)',
-                    boxShadow: '0 4px 12px rgba(255, 71, 87, 0.3)'
-                  }}
-                >
-                  <X className="w-4 h-4 text-white" />
-                </button>
-              </div>
-            </div>
+            // Main activity display with spanning indicators - Make it draggable
+            <DraggableScheduledActivity 
+              activity={activity}
+              theme={theme}
+              onRemoveActivity={onRemoveActivity}
+            />
           )}
         </motion.div>
       ) : (
@@ -286,6 +210,117 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
   )
 }
 
+// Draggable wrapper for scheduled activities
+interface DraggableScheduledActivityProps {
+  activity: ScheduledActivity
+  theme: any
+  onRemoveActivity: (activityId: string) => void
+}
+
+const DraggableScheduledActivity: React.FC<DraggableScheduledActivityProps> = ({
+  activity,
+  theme,
+  onRemoveActivity
+}) => {
+  const [{ isDragging }, drag] = useDrag({
+    type: 'scheduled-activity',
+    item: { 
+      type: 'scheduled-activity',
+      id: activity.scheduledId,
+      originalActivity: activity
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  })
+
+  return (
+    <div
+      ref={drag as any}
+      className={`p-4 rounded-xl shadow-lg border backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-move group relative overflow-hidden ${isDragging ? 'opacity-50 scale-105' : ''}`}
+      style={{
+        background: `linear-gradient(135deg, ${theme.colors.surface}95, ${theme.colors.primary}15)`,
+        borderColor: `${theme.colors.primary}50`,
+        boxShadow: isDragging 
+          ? `0 12px 40px ${theme.colors.primary}30, 0 6px 20px rgba(0,0,0,0.2)`
+          : `0 8px 32px ${theme.colors.primary}20, 0 4px 16px rgba(0,0,0,0.1)`
+      }}
+    >
+      {/* Spanning activity indicator */}
+      {activity.duration && activity.duration > 60 && (
+        <div className="absolute top-0 right-0">
+          <div 
+            className="px-2 py-1 text-xs font-bold text-white rounded-bl-lg"
+            style={{ 
+              background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.primary})`
+            }}
+          >
+            {Math.ceil(activity.duration / 60)}h
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <h4 className="font-medium text-sm" style={{ color: theme.colors.text }}>
+              {activity.name}
+            </h4>
+            {activity.duration && activity.duration > 60 && (
+              <span 
+                className="px-2 py-0.5 text-xs font-bold rounded-full"
+                style={{ 
+                  backgroundColor: `${theme.colors.accent}20`,
+                  color: theme.colors.accent 
+                }}
+              >
+                SPANS {Math.ceil(activity.duration / 60)}h
+              </span>
+            )}
+          </div>
+          <p className="text-xs mb-2" style={{ color: theme.colors.textSecondary }}>
+            {activity.description}
+          </p>
+          <div className="flex items-center gap-4 text-xs" style={{ color: theme.colors.textSecondary }}>
+            {activity.duration && (
+              <div className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                <span className="font-medium">
+                  {Math.floor(activity.duration / 60)}h {activity.duration % 60}m
+                </span>
+              </div>
+            )}
+            {activity.cost !== undefined && (
+              <div className="flex items-center gap-1">
+                <span className="text-green-600 font-medium">${activity.cost}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            console.log('🗑️ Removing activity:', {
+              name: activity.name,
+              scheduledId: activity.scheduledId,
+              id: activity.id,
+              startTime: activity.startTime
+            })
+            onRemoveActivity(activity.scheduledId || activity.id)
+          }}
+          className="p-2 rounded-full transition-all duration-200 hover:scale-110 opacity-0 group-hover:opacity-100"
+          style={{
+            background: 'linear-gradient(135deg, #ff4757, #ff3742)',
+            boxShadow: '0 4px 12px rgba(255, 71, 87, 0.3)'
+          }}
+        >
+          <X className="w-4 h-4 text-white" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   scheduledActivities,
   onAddActivity,
@@ -306,13 +341,13 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   // Helper functions
   const getActivityForSlot = (timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
     return scheduledActivities.find(activity => 
-      activity.timeSlot === timeSlot && activity.day === day
+      activity.startTime === timeSlot && activity.day === day
     )
   }
 
   const isSlotOccupied = (timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
     return scheduledActivities.some(activity => 
-      activity.timeSlot === timeSlot && activity.day === day
+      activity.startTime === timeSlot && activity.day === day
     )
   }
 
@@ -450,6 +485,7 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
                       isOccupied={isSlotOccupied(timeSlot.id, day)}
                       onAddActivity={onAddActivity}
                       onRemoveActivity={onRemoveActivity}
+                      onMoveActivity={onMoveActivity}
                       theme={currentTheme}
                     />
                   </motion.div>

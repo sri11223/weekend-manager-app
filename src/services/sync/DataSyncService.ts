@@ -144,7 +144,8 @@ export class DataSyncService {
     const merged = new Map<string, ScheduledActivity>()
     
     // Add all activities from both sources
-    [...dbActivities, ...localActivities].forEach(activity => {
+    const allActivities = dbActivities.concat(localActivities)
+    allActivities.forEach(activity => {
       const existing = merged.get(activity.id)
       
       if (!existing) {

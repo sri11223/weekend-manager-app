@@ -321,6 +321,7 @@ export const SimpleMinimalLayout: React.FC = () => {
     setCurrentWeekend,
     addActivity: addRegularActivity, 
     removeActivity, 
+    moveActivity,
     clearAllActivities 
   } = useScheduleStore()
 
@@ -329,6 +330,9 @@ export const SimpleMinimalLayout: React.FC = () => {
     setUpcomingHolidays,
     isLongWeekendMode
   } = useWeekendStore()
+
+  // Memoize scheduled activities to prevent unnecessary re-renders
+  const scheduledActivities = useMemo(() => getCurrentWeekendActivities(), [getCurrentWeekendActivities])
 
   // Extended addActivity that handles both regular weekends and long weekends
   const addActivity = (activity: any, timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
@@ -764,8 +768,9 @@ export const SimpleMinimalLayout: React.FC = () => {
             {/* BOTTOM SECTION - WEEKEND SUMMARY/BUDGET (FIXED) */}
             <div className="p-6 border-t" style={{ borderColor: currentTheme.colors.border }}>
               <PlanSummary
-                scheduledActivities={getCurrentWeekendActivities()}
+                scheduledActivities={scheduledActivities}
                 onRemoveActivity={removeActivity}
+                onMoveActivity={moveActivity}
               />
             </div>
           </nav>
@@ -773,9 +778,10 @@ export const SimpleMinimalLayout: React.FC = () => {
           {/* MAIN TIMELINE */}
           <div className="flex-1">
             <EnhancedWeekendTimeline
-              scheduledActivities={getCurrentWeekendActivities() as any}
+              scheduledActivities={scheduledActivities as any}
               onAddActivity={addActivity}
               onRemoveActivity={removeActivity}
+              onMoveActivity={moveActivity}
               selectedDays={isLongWeekendMode ? ['friday', 'saturday', 'sunday', 'monday'] : ['saturday', 'sunday']}
               selectedWeekend={selectedWeekend}
               longWeekendDates={longWeekendDates}
@@ -789,12 +795,13 @@ export const SimpleMinimalLayout: React.FC = () => {
             category={activePanel}
             onClose={() => setActivePanel(null)}
             onAddActivity={addActivity}
+            onMoveActivity={moveActivity}
             searchQuery={searchQuery}
             themeId={themeId} // ✅ Pass current theme
             selectedWeekend={selectedWeekend} // ✅ Pass selected weekend dates
-            scheduledActivities={getCurrentWeekendActivities()}
+            scheduledActivities={scheduledActivities}
             onRemoveActivity={removeActivity}
-            key={`${activePanel}-${themeId}`} // ✅ Force re-render when theme changes
+            key={activePanel} // ✅ Only remount when category changes, not theme
           />
         )}
 
