@@ -4,7 +4,7 @@ import { Palette, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from '../../hooks/useTheme'
 
-const ThemeSelector: React.FC = () => {
+const ThemeSelector: React.FC = React.memo(() => {
   const { currentTheme, changeTheme, availableThemes, forceRender } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
 
@@ -106,6 +106,6 @@ const ThemeSelector: React.FC = () => {
       </AnimatePresence>
     </div>
   )
-}
+})
 
 export default ThemeSelector

@@ -517,4 +517,4 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   )
 }
 
-export default EnhancedWeekendTimeline
+export default React.memo(EnhancedWeekendTimeline)

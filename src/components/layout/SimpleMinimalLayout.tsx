@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { Search, Share2, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
@@ -205,7 +205,7 @@ export const SimpleMinimalLayout: React.FC = () => {
     )
   }
   
-  const handleDateClick = (date: Date) => {
+  const handleDateClick = useCallback((date: Date) => {
     console.log('📅 Date clicked:', date.toDateString(), 'day:', date.getDay())
     
     // Check if this is a long weekend day
@@ -315,7 +315,8 @@ export const SimpleMinimalLayout: React.FC = () => {
       // Update store with new weekend
       setCurrentWeekend(saturday, sunday)
     }
-  }
+  }, [setSelectedWeekend])
+  
   const { 
     getCurrentWeekendActivities,
     setCurrentWeekend,
@@ -335,7 +336,7 @@ export const SimpleMinimalLayout: React.FC = () => {
   const scheduledActivities = useMemo(() => getCurrentWeekendActivities(), [getCurrentWeekendActivities])
 
   // Extended addActivity that handles both regular weekends and long weekends
-  const addActivity = (activity: any, timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
+  const addActivity = useCallback((activity: any, timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
     // For regular weekend days, use the regular store
     if (day === 'saturday' || day === 'sunday') {
       return addRegularActivity(activity, timeSlot, day)
@@ -345,7 +346,7 @@ export const SimpleMinimalLayout: React.FC = () => {
     // For now, just return true to avoid errors - you can implement long weekend storage later
     console.log('Long weekend activity added:', { activity, timeSlot, day })
     return true
-  }
+  }, [addRegularActivity])
 
   // Long weekend click handler
   const [showLongWeekendTimeline, setShowLongWeekendTimeline] = useState(false)
@@ -364,7 +365,7 @@ export const SimpleMinimalLayout: React.FC = () => {
     }
   }, [isLongWeekendMode, showLongWeekendTimeline, setLongWeekendMode]) // Dependencies for proper effect management
 
-  const handleLongWeekendClick = (holidays: Array<{date: string; localName: string; name: string; countryCode: string}>) => {
+  const handleLongWeekendClick = useCallback((holidays: Array<{date: string; localName: string; name: string; countryCode: string}>) => {
     console.log('🎉 Long weekend clicked!', holidays)
     
     // Enable long weekend mode
@@ -374,16 +375,16 @@ export const SimpleMinimalLayout: React.FC = () => {
     
     // Show the compact timeline modal
     setShowLongWeekendTimeline(true)
-  }
+  }, [setLongWeekendMode, setUpcomingHolidays])
 
-  const handleCloseLongWeekendTimeline = () => {
+  const handleCloseLongWeekendTimeline = useCallback(() => {
     setShowLongWeekendTimeline(false)
-  }
+  }, [])
 
-  const handleCloseFullLongWeekendTimeline = () => {
+  const handleCloseFullLongWeekendTimeline = useCallback(() => {
     setLongWeekendMode(false)
     setLongWeekendDates(null)
-  }
+  }, [setLongWeekendMode])
   
   const [activePanel, setActivePanel] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -845,4 +846,4 @@ export const SimpleMinimalLayout: React.FC = () => {
   )
 }
 
-export default SimpleMinimalLayout
+export default React.memo(SimpleMinimalLayout)
