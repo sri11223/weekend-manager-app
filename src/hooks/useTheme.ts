@@ -124,12 +124,11 @@ export const useTheme = () => {
     window.dispatchEvent(new CustomEvent('weekendly-categories-update', { detail: eventData }))
     window.dispatchEvent(new CustomEvent('weekendly-force-update', { detail: eventData }))
 
-    // ✅ FORCE ADDITIONAL UPDATE AFTER SHORT DELAY
+    // ✅ FORCE PAGE RELOAD FOR COMPLETE THEME CHANGE
+    console.log('🔄 FORCING PAGE RELOAD for complete theme change')
     setTimeout(() => {
-      console.log(`🔄 SECONDARY color update for: ${newTheme.name}`)
-      applyCSSVariables(newTheme, true)
-      window.dispatchEvent(new CustomEvent('weekendly-secondary-update', { detail: eventData }))
-    }, 100)
+      window.location.reload()
+    }, 200) // Short delay to let state updates complete
 
     console.log(`✅ Theme CHANGED successfully to: ${newTheme.name}`)
   }, [currentTheme, applyCSSVariables])
