@@ -1,3 +1,6 @@
+/* Import responsive styles */
+@import './styles/responsive.css';
+
 /* Theme system controls all styling */
 
 .logo {

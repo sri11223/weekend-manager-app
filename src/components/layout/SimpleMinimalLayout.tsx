@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { Search, Share2, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react'
-import { DndProvider } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
 import { useTheme } from '../../hooks/useTheme'
 import { useScheduleStore } from '../../store/scheduleStore'
 import { useWeekendStore } from '../../store/weekendStore'
+import { useIsDesktop } from '../../hooks/useMediaQuery'
 import { MockActivityService } from '../../data/mockActivities'
 import EnhancedWeekendTimeline from '../features/EnhancedWeekendTimeline'
 import FloatingActivityBrowser from '../features/FloatingActivityBrowser'
@@ -43,6 +42,12 @@ const CATEGORY_ICONS = {
 
 export const SimpleMinimalLayout: React.FC = () => {
   const { currentTheme, themeId, isThemeReady } = useTheme()
+  const isDesktop = useIsDesktop()
+
+  // If not desktop, don't render (let mobile layout handle)
+  if (!isDesktop) {
+    return null
+  }
 
   // ✅ DYNAMIC CALENDAR STATE
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -478,117 +483,126 @@ export const SimpleMinimalLayout: React.FC = () => {
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div 
-        key={`simple-layout-${themeId}`}
-        style={dynamicStyles.container}
-      >
-        {/* HEADER */}
+    <div 
+      key={`simple-layout-${themeId}`}
+      style={dynamicStyles.container}
+    >
+        {/* HEADER - MOBILE RESPONSIVE */}
         <header 
-          className="border-b px-6 py-4"
+          className="border-b px-3 sm:px-6 py-4"
           style={dynamicStyles.header}
         >
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center space-x-4">
-              <h1 
-                className="text-2xl font-bold text-white cursor-pointer transition-all duration-300 hover:text-white/80"
-                onDoubleClick={() => setShowPerformanceTest(true)}
-                title="Double-click to open performance test dashboard"
-              >
-                Weekendly
-              </h1>
-              <div className="text-sm text-white/80">
-                Plan your perfect {themeDisplayName.toLowerCase()} weekend
+          <div className="max-w-7xl mx-auto">
+            {/* Mobile Layout: Stack vertically on small screens */}
+            <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+              
+              {/* Brand/Status Row - Responsive layout */}
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <h1 
+                  className="text-xl sm:text-2xl font-bold text-white cursor-pointer transition-all duration-300 hover:text-white/80"
+                  onDoubleClick={() => setShowPerformanceTest(true)}
+                  title="Double-click to open performance test dashboard"
+                >
+                  Weekendly
+                </h1>
+                <div className="text-xs sm:text-sm text-white/80">
+                  Plan your perfect {themeDisplayName.toLowerCase()} weekend
+                </div>
+                <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full w-fit">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-white/80">
+                    {currentCategories.reduce((sum, cat) => sum + cat.count, 0)} activities • Live
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-xs text-white/80">
-                  {currentCategories.reduce((sum, cat) => sum + cat.count, 0)} activities • Live
-                </span>
-              </div>
-            </div>
 
-            <div className="flex-1 max-w-md mx-8">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
-                <input
-                  type="text"
-                  placeholder={`Search ${themeDisplayName.toLowerCase()} activities...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/20 text-white placeholder-white/60"
-                />
+              {/* Search Bar - Full width on mobile/tablet */}
+              <div className="w-full lg:flex-1 lg:max-w-md lg:mx-8">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/60" />
+                  <input
+                    type="text"
+                    placeholder={`Search ${themeDisplayName.toLowerCase()} activities...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 lg:py-2 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/20 text-white placeholder-white/60 text-base lg:text-sm"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-4">
-              <ThemeSelector />
-              <button
-                onClick={() => setShowShareExport(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
-              >
-                <Share2 className="w-5 h-5" />
-                <span className="hidden md:inline">Share</span>
-              </button>
-              <button
-                onClick={clearAllActivities}
-                className="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white transition-colors"
-              >
-                Clear All
-              </button>
+              {/* Action Buttons - Responsive layout */}
+              <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-4">
+                <div className="flex items-center space-x-2 sm:space-x-4">
+                  <ThemeSelector />
+                  <button
+                    onClick={() => setShowShareExport(true)}
+                    className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors min-w-0 touch-manipulation"
+                  >
+                    <Share2 className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                    <span className="hidden sm:inline text-sm lg:text-base">Share</span>
+                  </button>
+                </div>
+                <button
+                  onClick={clearAllActivities}
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white transition-colors text-sm lg:text-base whitespace-nowrap touch-manipulation"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Long Weekend Mode Indicator */}
+        {/* Long Weekend Mode Indicator - Mobile Responsive */}
         {isLongWeekendMode && longWeekendDates && (
-          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3">
-            <div className="flex items-center justify-between">
+          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 sm:px-6 py-3">
+            <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div className="flex items-center space-x-3">
-                <div className="p-1 bg-white/20 rounded-lg">
-                  <Calendar className="w-5 h-5" />
+                <div className="p-1 bg-white/20 rounded-lg flex-shrink-0">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <div>
-                  <h3 className="font-semibold">Long Weekend Planning Mode</h3>
-                  <p className="text-sm text-white/80">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-sm sm:text-base">Long Weekend Planning Mode</h3>
+                  <p className="text-xs sm:text-sm text-white/80 truncate">
                     {formatDate(longWeekendDates.friday)} - {formatDate(longWeekendDates.monday)} 
-                    (4 days of fun!)
+                    <span className="hidden sm:inline"> (4 days of fun!)</span>
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleCloseFullLongWeekendTimeline}
-                className="flex items-center space-x-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm"
+                className="flex items-center justify-center space-x-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-xs sm:text-sm w-full sm:w-auto touch-manipulation"
               >
-                <span>Exit Long Weekend Mode</span>
-                <X className="w-4 h-4" />
+                <span className="sm:hidden">Exit Mode</span>
+                <span className="hidden sm:inline">Exit Long Weekend Mode</span>
+                <X className="w-4 h-4 flex-shrink-0" />
               </button>
             </div>
           </div>
         )}
 
-        {/* CATEGORIES BAR - Under Navbar */}
+        {/* CATEGORIES BAR - Mobile Responsive with Touch Scroll */}
         <div 
-          className="border-b px-6 py-4 overflow-x-auto"
+          className="border-b px-3 sm:px-6 py-3 sm:py-4 overflow-x-auto scrollbar-hide"
           style={{ 
             backgroundColor: currentTheme.colors.surface,
             borderColor: currentTheme.colors.border 
           }}
         >
-          <div className="flex gap-3 min-w-max">
+          <div className="flex gap-2 sm:gap-3 min-w-max pb-1">
             {currentCategories.map((category) => {
               const IconComponent = category.icon
               return (
                 <button
                   key={category.id}
                   onClick={() => setActivePanel(activePanel === category.id ? null : category.id)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 hover:scale-105 whitespace-nowrap"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2 rounded-lg border transition-all duration-200 hover:scale-105 whitespace-nowrap touch-manipulation min-h-[44px] sm:min-h-[auto]"
                   style={dynamicStyles.categoryButton(activePanel === category.id)}
                 >
-                  <IconComponent className="w-4 h-4" style={{ color: currentTheme.colors.primary }} />
-                  <span className="font-medium">{category.name}</span>
+                  <IconComponent className="w-4 h-4 flex-shrink-0" style={{ color: currentTheme.colors.primary }} />
+                  <span className="font-medium text-sm sm:text-base">{category.name}</span>
                   <span 
-                    className="text-xs px-2 py-1 rounded-full" 
+                    className="text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full flex-shrink-0" 
                     style={{ 
                       backgroundColor: `${currentTheme.colors.primary}20`,
                       color: currentTheme.colors.primary 
@@ -601,7 +615,7 @@ export const SimpleMinimalLayout: React.FC = () => {
             })}
             
             {/* Long Weekend Widget in the gap */}
-            <div className="flex items-center ml-4 pl-4 border-l" style={{ borderColor: currentTheme.colors.border }}>
+            <div className="flex items-center ml-2 sm:ml-4 pl-2 sm:pl-4 border-l" style={{ borderColor: currentTheme.colors.border }}>
               <LongWeekendWidget 
                 theme={currentTheme}
                 onLongWeekendClick={handleLongWeekendClick}
@@ -610,20 +624,20 @@ export const SimpleMinimalLayout: React.FC = () => {
           </div>
         </div>
 
-        {/* MAIN CONTENT */}
-        <div className="flex" style={{ backgroundColor: currentTheme.colors.background }}>
-          {/* SIDEBAR - Only Theme Info and Budget */}
+        {/* MAIN CONTENT - Responsive Layout */}
+        <div className="flex flex-col lg:flex-row" style={{ backgroundColor: currentTheme.colors.background }}>
+          {/* SIDEBAR - Responsive: Hidden on mobile, collapsible on tablet, fixed on desktop */}
           <nav 
-            className="w-80 border-r h-screen flex flex-col"
+            className="hidden lg:flex lg:w-80 border-r lg:h-screen flex-col lg:flex-shrink-0"
             style={dynamicStyles.sidebar}
           >
             {/* TOP SECTION - THEME INFO (FIXED) */}
-            <div className="p-6 border-b" style={{ borderColor: currentTheme.colors.border }}>
+            <div className="p-4 lg:p-6 border-b" style={{ borderColor: currentTheme.colors.border }}>
               <div className="text-center">
-                <div className="text-lg font-bold" style={{ color: currentTheme.colors.text }}>
+                <div className="text-base lg:text-lg font-bold" style={{ color: currentTheme.colors.text }}>
                   {themeDisplayName.toUpperCase()} THEME
                 </div>
-                <div className="text-sm mt-1" style={{ color: currentTheme.colors.textSecondary }}>
+                <div className="text-xs lg:text-sm mt-1" style={{ color: currentTheme.colors.textSecondary }}>
                   {currentCategories.length} categories • {currentCategories.reduce((sum, cat) => sum + cat.count, 0)} activities
                 </div>
               </div>
@@ -740,7 +754,7 @@ export const SimpleMinimalLayout: React.FC = () => {
             </div>
 
             {/* BOTTOM SECTION - WEEKEND SUMMARY/BUDGET (FIXED) */}
-            <div className="p-6 border-t" style={{ borderColor: currentTheme.colors.border }}>
+            <div className="p-4 lg:p-6 border-t" style={{ borderColor: currentTheme.colors.border }}>
               <PlanSummary
                 scheduledActivities={scheduledActivities}
                 onRemoveActivity={removeActivity}
@@ -749,8 +763,8 @@ export const SimpleMinimalLayout: React.FC = () => {
             </div>
           </nav>
 
-          {/* MAIN TIMELINE */}
-          <div className="flex-1">
+          {/* MAIN TIMELINE - Responsive Container */}
+          <div className="flex-1 min-h-screen lg:min-h-0">
             <EnhancedWeekendTimeline
               scheduledActivities={scheduledActivities as any}
               onAddActivity={addActivity}
@@ -759,6 +773,23 @@ export const SimpleMinimalLayout: React.FC = () => {
               selectedDays={isLongWeekendMode ? ['friday', 'saturday', 'sunday', 'monday'] : ['saturday', 'sunday']}
               selectedWeekend={selectedWeekend}
               longWeekendDates={longWeekendDates}
+            />
+          </div>
+
+          {/* MOBILE SUMMARY - Only visible on mobile, replaces hidden sidebar */}
+          <div className="lg:hidden border-t px-3 sm:px-6 py-4" style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}>
+            <div className="text-center mb-4">
+              <div className="text-sm font-bold" style={{ color: currentTheme.colors.text }}>
+                {themeDisplayName.toUpperCase()} THEME
+              </div>
+              <div className="text-xs mt-1" style={{ color: currentTheme.colors.textSecondary }}>
+                {currentCategories.length} categories • {currentCategories.reduce((sum, cat) => sum + cat.count, 0)} activities
+              </div>
+            </div>
+            <PlanSummary
+              scheduledActivities={scheduledActivities}
+              onRemoveActivity={removeActivity}
+              onMoveActivity={moveActivity}
             />
           </div>
         </div>
@@ -815,7 +846,6 @@ export const SimpleMinimalLayout: React.FC = () => {
           />
         )}
       </div>
-    </DndProvider>
   )
 }
 

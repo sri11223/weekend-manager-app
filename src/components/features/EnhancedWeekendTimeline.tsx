@@ -9,6 +9,7 @@ import { TIME_SLOTS, TimeSlot } from '../../types/theme'
 import { Activity, ScheduledActivity } from '../../types/index'
 import { useTheme } from '../../hooks/useTheme'
 import { useWeekendStore } from '../../store/weekendStore'
+import QuickActivityPopup from './QuickActivityPopup'
 
 interface EnhancedWeekendTimelineProps {
   scheduledActivities: ScheduledActivity[]
@@ -38,6 +39,7 @@ interface TimeSlotDropZoneProps {
   onMoveActivity?: (activityId: string, newTimeSlot: string, newDay: 'saturday' | 'sunday' | 'friday' | 'monday') => boolean
   theme: any
   selectedDate?: Date
+  onEmptySlotClick: (timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => void
 }
 
 const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
@@ -49,7 +51,8 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
   onRemoveActivity,
   onMoveActivity,
   theme,
-  selectedDate
+  selectedDate,
+  onEmptySlotClick
 }) => {
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: ['activity', 'scheduled-activity'],
@@ -189,9 +192,11 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
           )}
         </motion.div>
       ) : (
-        // Empty slot
-        <div 
-          className="flex items-center justify-center h-16 transition-all duration-200" 
+        // Empty slot - now clickable!
+        <button
+          onClick={() => !isOccupied && onEmptySlotClick(timeSlot.id, day)}
+          disabled={isOccupied}
+          className="w-full flex items-center justify-center h-16 transition-all duration-200 hover:bg-white/10 rounded-lg disabled:cursor-not-allowed" 
           style={{ color: theme.colors.textSecondary }}
         >
           {isOccupied ? (
@@ -199,12 +204,12 @@ const TimeSlotDropZone: React.FC<TimeSlotDropZoneProps> = ({
               <span className="text-xs opacity-60">Slot Occupied</span>
             </div>
           ) : (
-            <div className="text-center">
-              <Plus className="w-5 h-5 mx-auto mb-1 opacity-60" />
-              <span className="text-xs opacity-80">Drop activity here</span>
+            <div className="text-center group">
+              <Plus className="w-5 h-5 mx-auto mb-1 opacity-60 group-hover:opacity-100 transition-opacity" />
+              <span className="text-xs opacity-80 group-hover:opacity-100">Click to add activity</span>
             </div>
           )}
-        </div>
+        </button>
       )}
     </div>
   )
@@ -308,11 +313,12 @@ const DraggableScheduledActivity: React.FC<DraggableScheduledActivityProps> = ({
             })
             onRemoveActivity(activity.scheduledId || activity.id)
           }}
-          className="p-2 rounded-full transition-all duration-200 hover:scale-110 opacity-0 group-hover:opacity-100"
+          className="p-2 rounded-full transition-all duration-200 hover:scale-110 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 hover:opacity-100 active:opacity-100 touch-manipulation"
           style={{
             background: 'linear-gradient(135deg, #ff4757, #ff3742)',
             boxShadow: '0 4px 12px rgba(255, 71, 87, 0.3)'
           }}
+          title="Remove activity"
         >
           <X className="w-4 h-4 text-white" />
         </button>
@@ -333,6 +339,34 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   const { currentTheme } = useTheme()
   const { isLongWeekendMode } = useWeekendStore()
   const [selectedTimeRange, setSelectedTimeRange] = useState<'all' | 'morning' | 'afternoon' | 'evening' | 'night'>('all')
+  const [popupOpen, setPopupOpen] = useState(false)
+  const [selectedSlot, setSelectedSlot] = useState<{ timeSlot: string; day: 'saturday' | 'sunday' | 'friday' | 'monday' } | null>(null)
+
+  const handleEmptySlotClick = (timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
+    console.log('🎯 Empty slot clicked:', { timeSlot, day })
+    setSelectedSlot({ timeSlot, day })
+    setPopupOpen(true)
+  }
+
+  const handlePopupActivitySelect = (activity: Activity) => {
+    console.log('🎯 Activity selected from popup:', activity.name, 'for slot:', selectedSlot)
+    if (selectedSlot) {
+      const success = onAddActivity(activity, selectedSlot.timeSlot, selectedSlot.day)
+      console.log('🎯 Add activity result:', success)
+      if (success) {
+        setPopupOpen(false)
+        setSelectedSlot(null)
+      } else {
+        console.error('Failed to add activity to timeline')
+        // Could show a toast or alert here
+      }
+    }
+  }
+
+  const handlePopupClose = () => {
+    setPopupOpen(false)
+    setSelectedSlot(null)
+  }
 
   const filteredTimeSlots = selectedTimeRange === 'all' 
     ? TIME_SLOTS 
@@ -401,9 +435,9 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
       <div className="grid gap-6">
         {activeDays.map((day) => (
           <div key={day} className="space-y-4">
-            {/* Day Header */}
+            {/* Day Header - Mobile Responsive */}
             <div 
-              className="relative flex items-center gap-4 p-4 rounded-xl backdrop-blur-sm overflow-hidden transition-all duration-300" 
+              className="relative flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl backdrop-blur-sm overflow-hidden transition-all duration-300" 
               style={{
                 background: `linear-gradient(135deg, ${currentTheme.colors.surface}90, ${currentTheme.colors.primary}10)`,
                 border: `1px solid ${currentTheme.colors.border}`,
@@ -422,28 +456,32 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
                 className="opacity-30" 
               />
               
-              <div
-                className="w-6 h-6 rounded-full shadow-lg relative z-10 transition-all duration-300"
-                style={{ 
-                  background: `linear-gradient(135deg, ${currentTheme.colors.primary}, ${currentTheme.colors.secondary})`,
-                  boxShadow: `0 4px 12px ${currentTheme.colors.primary}40`
-                }}
-              />
-              <h3 className="text-xl font-bold capitalize relative z-10 transition-colors duration-300" style={{ color: currentTheme.colors.text }}>
-                {day}
-              </h3>
-              <div 
-                className="px-3 py-1 rounded-full text-sm font-medium relative z-10 transition-all duration-300" 
-                style={{ 
-                  background: `${currentTheme.colors.accent}20`,
-                  color: currentTheme.colors.accent
-                }}
-              >
-                {getActivitiesCount(day)} activities
+              {/* Day Info Row */}
+              <div className="flex items-center gap-3 sm:gap-4 relative z-10">
+                <div
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full shadow-lg transition-all duration-300 flex-shrink-0"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${currentTheme.colors.primary}, ${currentTheme.colors.secondary})`,
+                    boxShadow: `0 4px 12px ${currentTheme.colors.primary}40`
+                  }}
+                />
+                <h3 className="text-lg sm:text-xl font-bold capitalize transition-colors duration-300" style={{ color: currentTheme.colors.text }}>
+                  {day}
+                </h3>
+                <div 
+                  className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-all duration-300" 
+                  style={{ 
+                    background: `${currentTheme.colors.accent}20`,
+                    color: currentTheme.colors.accent
+                  }}
+                >
+                  {getActivitiesCount(day)} activities
+                </div>
               </div>
               
-              <div className="ml-auto flex items-center gap-2 relative z-10">
-                <span className="text-sm font-medium transition-colors duration-300" style={{ color: currentTheme.colors.textSecondary }}>
+              {/* Weather Info - Right aligned on desktop, separate row on mobile */}
+              <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 relative z-10">
+                <span className="text-xs sm:text-sm font-medium transition-colors duration-300" style={{ color: currentTheme.colors.textSecondary }}>
                   {(() => {
                     const currentDate = 
                       day === 'saturday' ? selectedWeekend?.saturday :
@@ -467,8 +505,8 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
               </div>
             </div>
 
-            {/* Time Slots Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {/* Time Slots Grid - Mobile Optimized */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               <AnimatePresence>
                 {filteredTimeSlots.map((timeSlot) => (
                   <motion.div
@@ -486,6 +524,7 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
                       onAddActivity={onAddActivity}
                       onRemoveActivity={onRemoveActivity}
                       onMoveActivity={onMoveActivity}
+                      onEmptySlotClick={handleEmptySlotClick}
                       theme={currentTheme}
                     />
                   </motion.div>
@@ -513,6 +552,16 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
           </p>
         </div>
       )}
+
+      {/* Quick Activity Popup */}
+      <QuickActivityPopup
+        isOpen={popupOpen}
+        onClose={handlePopupClose}
+        onActivitySelect={handlePopupActivitySelect}
+        timeSlot={selectedSlot?.timeSlot || ''}
+        day={selectedSlot?.day === 'friday' || selectedSlot?.day === 'monday' ? 'saturday' : selectedSlot?.day || 'saturday'}
+        title="Add Activity"
+      />
     </div>
   )
 }

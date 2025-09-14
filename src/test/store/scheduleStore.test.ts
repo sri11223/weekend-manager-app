@@ -9,14 +9,16 @@ describe('Schedule Store', () => {
   beforeEach(() => {
     // Reset store state before each test
     mockStore.setState({
-      scheduledActivities: [],
+      weekendActivities: {},
+      currentWeekend: { saturday: new Date(), sunday: new Date() }
     })
     vi.clearAllMocks()
   })
 
   it('initializes with empty scheduled activities', () => {
     const state = mockStore.getState()
-    expect(state.scheduledActivities).toEqual([])
+    const activities = state.getCurrentWeekendActivities()
+    expect(activities).toEqual([])
   })
 
   it('adds activity to schedule successfully', () => {
@@ -27,9 +29,10 @@ describe('Schedule Store', () => {
     expect(result).toBe(true)
     
     const state = mockStore.getState()
-    expect(state.scheduledActivities).toHaveLength(1)
-    expect(state.scheduledActivities[0]).toMatchObject({
-      title: mockActivity.title,
+    const activities = state.getCurrentWeekendActivities()
+    expect(activities).toHaveLength(1)
+    expect(activities[0]).toMatchObject({
+      name: mockActivity.name,
       description: mockActivity.description,
       duration: mockActivity.duration,
       category: mockActivity.category,
@@ -48,13 +51,14 @@ describe('Schedule Store', () => {
     const result = addActivity({
       ...mockActivity,
       id: 'different-id',
-      title: 'Different Activity'
+      name: 'Different Activity'
     }, '10am', 'saturday')
     
     expect(result).toBe(false)
     
     const state = mockStore.getState()
-    expect(state.scheduledActivities).toHaveLength(1)
+    const activities = state.getCurrentWeekendActivities()
+    expect(activities).toHaveLength(1)
   })
 
 
@@ -65,13 +69,15 @@ describe('Schedule Store', () => {
     addActivity(mockActivity, '10am', 'saturday')
     
     let state = mockStore.getState()
-    const activityId = state.scheduledActivities[0].id
+    let activities = state.getCurrentWeekendActivities()
+    const activityId = activities[0].id
     
     // Remove activity
     removeActivity(activityId)
     
     state = mockStore.getState()
-    expect(state.scheduledActivities).toHaveLength(0)
+    activities = state.getCurrentWeekendActivities()
+    expect(activities).toHaveLength(0)
   })
 
   it('moves activity to new time slot', () => {
@@ -81,7 +87,8 @@ describe('Schedule Store', () => {
     addActivity(mockActivity, '10am', 'saturday')
     
     let state = mockStore.getState()
-    const activityId = state.scheduledActivities[0].id
+    let activities = state.getCurrentWeekendActivities()
+    const activityId = activities[0].id
     
     // Move activity
     const result = moveActivity(activityId, '2pm', 'sunday')
@@ -89,7 +96,7 @@ describe('Schedule Store', () => {
     expect(result).toBe(true)
     
     state = mockStore.getState()
-    const activities = state.scheduledActivities
+    activities = state.getCurrentWeekendActivities()
     const movedActivity = activities.find(a => a.day === 'sunday')
     expect(movedActivity).toBeDefined()
     expect(movedActivity?.day).toBe('sunday')
@@ -117,7 +124,7 @@ describe('Schedule Store', () => {
     addActivity({
       ...mockActivity,
       id: 'sunday-activity',
-      title: 'Sunday Activity'
+      name: 'Sunday Activity'
     }, '2pm', 'sunday')
     
     const saturdayActivities = getActivitiesForDay('saturday')
@@ -132,13 +139,19 @@ describe('Schedule Store', () => {
   it('clears all scheduled activities', () => {
     // Add some activities first
     useScheduleStore.getState().addActivity(mockActivity, '10am', 'saturday')
-    useScheduleStore.getState().addActivity(mockActivity, '2pm', 'sunday')
+    useScheduleStore.getState().addActivity({
+      ...mockActivity,
+      id: 'sunday-activity-2',
+      name: 'Sunday Activity'
+    }, '2pm', 'sunday')
     
-    expect(useScheduleStore.getState().scheduledActivities).toHaveLength(2)
+    let activities = useScheduleStore.getState().getCurrentWeekendActivities()
+    expect(activities).toHaveLength(2)
     
     // Clear all
     useScheduleStore.getState().clearAllActivities()
     
-    expect(useScheduleStore.getState().scheduledActivities).toHaveLength(0)
+    activities = useScheduleStore.getState().getCurrentWeekendActivities()
+    expect(activities).toHaveLength(0)
   })
 })

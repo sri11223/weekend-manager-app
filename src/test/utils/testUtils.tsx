@@ -23,12 +23,18 @@ export { customRender as render }
 // Mock activity data for testing
 export const mockActivity = {
   id: 'test-activity-1',
-  title: 'Test Activity',
+  name: 'Test Activity',
   description: 'A test activity for unit testing',
-  duration: 2,
-  category: 'entertainment',
-  image: '/test-image.jpg',
-  cost: 25,
+  duration: 60, // 1 hour in minutes (to avoid blocking issues in tests)
+  category: 'entertainment' as const,
+  mood: 'energetic' as const,
+  icon: 'game',
+  color: '#3b82f6',
+  indoor: false,
+  cost: 'free' as const,
+  difficulty: 'easy' as const,
+  tags: ['test', 'fun'],
+  weatherDependent: false,
 }
 
 export const mockScheduledActivity = {

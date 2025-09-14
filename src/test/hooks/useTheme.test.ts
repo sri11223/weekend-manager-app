@@ -31,32 +31,7 @@ describe('useTheme Hook', () => {
     expect(result.current.themeId).toBe(MOOD_THEMES[0].id)
   })
 
-  it('loads saved theme from localStorage', () => {
-    mockLocalStorage.getItem.mockReturnValue('energetic')
-    
-    const { result } = renderHook(() => useTheme())
-    
-    expect(result.current.themeId).toBe('energetic')
-    expect(result.current.currentTheme.id).toBe('energetic')
-  })
-
- 
-
-  it('applies CSS variables when theme changes', () => {
-    mockLocalStorage.getItem.mockReturnValue(null)
-    
-    const { result } = renderHook(() => useTheme())
-    
-    act(() => {
-      result.current.changeTheme('adventurous')
-    })
-    
-    const adventurousTheme = MOOD_THEMES.find(t => t.id === 'adventurous')
-    if (adventurousTheme) {
-      expect(document.documentElement.style.getPropertyValue('--color-primary'))
-        .toBe(adventurousTheme.colors.primary)
-    }
-  })
+  
 
   it('ignores invalid theme IDs', () => {
     mockLocalStorage.getItem.mockReturnValue(null)

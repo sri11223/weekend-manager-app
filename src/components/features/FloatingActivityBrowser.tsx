@@ -440,42 +440,45 @@ export const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = (
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[80vh] overflow-hidden"
+        className="bg-white rounded-lg sm:rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-6xl h-[95vh] sm:h-[80vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ✅ THEME-AWARE HEADER WITH MOCK DATA INFO */}
-        <div className={`bg-gradient-to-r ${config.bgGradient} p-6 text-white`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-2xl font-bold">{config.title}</h2>
-                <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-medium">
-                  {themeId.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ')} Theme
-                </span>
-                <span className="px-3 py-1 bg-white/25 rounded-full text-sm font-bold">
-                  {totalActivitiesCount} Activities
-                </span>
+        {/* ✅ THEME-AWARE HEADER - Mobile Responsive */}
+        <div className={`bg-gradient-to-r ${config.bgGradient} p-4 sm:p-6 text-white`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                <h2 className="text-xl sm:text-2xl font-bold truncate">{config.title}</h2>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2 sm:px-3 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-medium">
+                    {themeId.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ')} Theme
+                  </span>
+                  <span className="px-2 sm:px-3 py-1 bg-white/25 rounded-full text-xs sm:text-sm font-bold">
+                    {totalActivitiesCount} Activities
+                  </span>
+                </div>
               </div>
-              <p className="text-white/80 mt-1">{config.description}</p>
+              <p className="text-white/80 mt-1 text-sm sm:text-base">{config.description}</p>
               <div className="flex items-center gap-2 mt-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-white/80">
+                <span className="text-xs sm:text-sm text-white/80">
                   Loaded from comprehensive activity database
                 </span>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-3 sm:p-2 hover:bg-white/20 rounded-lg transition-colors touch-manipulation flex-shrink-0 mt-2 sm:mt-0"
+              aria-label="Close"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
 
@@ -580,12 +583,12 @@ export const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = (
           )}
         </div>
 
-        {/* Content with Timeline Sidebar */}
-        <div className="flex h-[calc(100%-180px)]">
-          {/* ✅ ACTIVITIES LIST WITH MOCK DATA */}
-          <div className="flex-1 p-6 overflow-y-auto">
+        {/* Content - Responsive Layout */}
+        <div className="flex flex-col lg:flex-row h-[calc(100%-180px)]">
+          {/* ✅ ACTIVITIES LIST - Mobile First */}
+          <div className="flex-1 p-3 sm:p-6 overflow-y-auto">
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <motion.div 
                     key={i} 
@@ -675,8 +678,8 @@ export const FloatingActivityBrowser: React.FC<FloatingActivityBrowserProps> = (
             )}
           </div>
 
-          {/* ✅ ENHANCED VISUAL TIMELINE SIDEBAR - KEEPING ORIGINAL DESIGN */}
-          <div className="w-96 border-l border-gray-200 bg-gradient-to-br from-gray-50 to-white p-6 overflow-y-auto">
+          {/* ✅ TIMELINE SIDEBAR - Hidden on mobile, visible on desktop */}
+          <div className="hidden lg:block lg:w-96 border-l border-gray-200 bg-gradient-to-br from-gray-50 to-white p-4 lg:p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-r ${config.bgGradient} flex items-center justify-center shadow-xl`}>
