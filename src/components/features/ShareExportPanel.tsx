@@ -16,13 +16,14 @@ export const ShareExportPanel: React.FC<ShareExportPanelProps> = ({ onClose }) =
   const [isGenerating, setIsGenerating] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
   const posterRef = useRef<HTMLDivElement>(null)
-  const { scheduledActivities } = useScheduleStore()
+  const { getCurrentWeekendActivities } = useScheduleStore()
   const { currentTheme } = useTheme()
+  const scheduledActivities = getCurrentWeekendActivities() || []
 
   const generateShareableLink = () => {
     try {
       const planData = {
-        activities: scheduledActivities.map(activity => ({
+        activities: (scheduledActivities || []).map(activity => ({
           id: activity.id,
           name: activity.name,
           day: activity.day,
@@ -95,7 +96,8 @@ export const ShareExportPanel: React.FC<ShareExportPanelProps> = ({ onClose }) =
   }
 
   const shareToSocial = (platform: string) => {
-    const shareText = `Check out my awesome weekend plan! 🌟 ${scheduledActivities.length} activities planned for the perfect weekend.`
+    const activityCount = scheduledActivities ? scheduledActivities.length : 0
+    const shareText = `Check out my awesome weekend plan! 🌟 ${activityCount} activities planned for the perfect weekend.`
     const shareUrl = generateShareableLink()
     
     const urls = {
@@ -300,7 +302,7 @@ export const ShareExportPanel: React.FC<ShareExportPanelProps> = ({ onClose }) =
               <div className="space-y-3">
                 <button
                   onClick={generatePoster}
-                  disabled={isGenerating || scheduledActivities.length === 0}
+                  disabled={isGenerating || !scheduledActivities || scheduledActivities.length === 0}
                   className="w-full p-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
                 >
                   {isGenerating ? (
@@ -313,7 +315,7 @@ export const ShareExportPanel: React.FC<ShareExportPanelProps> = ({ onClose }) =
 
                 <button
                   onClick={exportToPDF}
-                  disabled={scheduledActivities.length === 0}
+                  disabled={!scheduledActivities || scheduledActivities.length === 0}
                   className="w-full p-3 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 text-gray-700 disabled:text-gray-400 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <Download className="w-4 h-4" />
@@ -323,7 +325,7 @@ export const ShareExportPanel: React.FC<ShareExportPanelProps> = ({ onClose }) =
 
               {/* Preview */}
               <div className="text-center text-sm text-gray-500">
-                <p>{scheduledActivities.length} activities ready to export</p>
+                <p>{scheduledActivities ? scheduledActivities.length : 0} activities ready to export</p>
               </div>
             </motion.div>
           )}
@@ -392,7 +394,7 @@ export const ShareExportPanel: React.FC<ShareExportPanelProps> = ({ onClose }) =
               style={{ backgroundColor: `${currentTheme.colors.primary}15` }}
             >
               <div className="text-3xl font-black mb-1" style={{ color: currentTheme.colors.primary }}>
-                {scheduledActivities.length}
+                {scheduledActivities ? scheduledActivities.length : 0}
               </div>
               <div className="text-sm font-semibold" style={{ color: currentTheme.colors.text }}>
                 Activities
@@ -403,7 +405,7 @@ export const ShareExportPanel: React.FC<ShareExportPanelProps> = ({ onClose }) =
               style={{ backgroundColor: `${currentTheme.colors.accent}15` }}
             >
               <div className="text-3xl font-black mb-1" style={{ color: currentTheme.colors.accent }}>
-                ${scheduledActivities.reduce((sum, activity) => sum + (Number(activity.cost) || 0), 0)}
+                ${scheduledActivities ? scheduledActivities.reduce((sum, activity) => sum + (Number(activity.cost) || 0), 0) : 0}
               </div>
               <div className="text-sm font-semibold" style={{ color: currentTheme.colors.text }}>
                 Budget
@@ -414,7 +416,7 @@ export const ShareExportPanel: React.FC<ShareExportPanelProps> = ({ onClose }) =
               style={{ backgroundColor: `${currentTheme.colors.secondary}15` }}
             >
               <div className="text-3xl font-black mb-1" style={{ color: currentTheme.colors.secondary }}>
-                {Math.floor(scheduledActivities.reduce((sum, activity) => sum + activity.duration, 0) / 60)}h
+                {Math.floor((scheduledActivities ? scheduledActivities.reduce((sum, activity) => sum + activity.duration, 0) : 0) / 60)}h
               </div>
               <div className="text-sm font-semibold" style={{ color: currentTheme.colors.text }}>
                 Duration
@@ -425,7 +427,7 @@ export const ShareExportPanel: React.FC<ShareExportPanelProps> = ({ onClose }) =
           {/* Timeline Layout */}
           <div className="space-y-8">
             {['saturday', 'sunday'].map(day => {
-              const dayActivities = scheduledActivities.filter(activity => activity.day === day)
+              const dayActivities = scheduledActivities ? scheduledActivities.filter(activity => activity.day === day) : []
               return (
                 <div key={day} className="space-y-4">
                   {/* Day Header */}

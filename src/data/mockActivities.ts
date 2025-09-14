@@ -17,7 +17,9 @@ export interface Activity {
     image?: string
   }
   
-  export const mockActivitiesDatabase = {
+  export const mockActivitiesDatabase: {
+    [theme: string]: { [category: string]: Activity[] }
+  } = {
     // 🌟 ADVENTUROUS THEME - COMPLETE WITH EXPANDED CATEGORIES
    // 🌟 ADVENTUROUS THEME - COMPLETE
 adventurous: {
@@ -492,7 +494,7 @@ creative_flow: {
         return []
       }
       
-      return themeData[categoryKey] || []
+      return (themeData as Record<string, Activity[]>)[categoryKey] || []
     }
     
     /**

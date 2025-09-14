@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Activity } from '../types/index'
+import { databaseService } from '../services/database/DatabaseService'
 
 export interface LongWeekendActivity {
   id: string
@@ -146,6 +147,15 @@ export const useLongWeekendStore = create<LongWeekendPlanState>()(
             [longWeekendKey]: updatedActivities
           }
         })
+        
+        // Persist to IndexedDB via DatabaseService
+        try {
+          databaseService.saveScheduledActivity(newActivity as any)
+            .then(() => console.log('✅ Long weekend activity saved to IndexedDB'))
+            .catch((err: any) => console.error('❌ Failed to save to IndexedDB:', err))
+        } catch (error) {
+          console.warn('Database service not available:', error)
+        }
         
         console.log('✅ Added long weekend activity:', newActivity)
         return true

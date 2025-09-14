@@ -37,6 +37,12 @@ interface EnhancedWeekendTimelineProps {
     saturday: Date
     sunday: Date
   }
+  longWeekendDates?: {
+    friday: Date
+    saturday: Date
+    sunday: Date
+    monday: Date
+  } | null
 }
 
 interface TimeSlotDropZoneProps {
@@ -286,10 +292,11 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
   onRemoveActivity,
   onMoveActivity,
   selectedDays,
-  selectedWeekend
+  selectedWeekend,
+  longWeekendDates
 }) => {
   const { currentTheme } = useTheme()
-  const { isLongWeekendMode, getAvailableDays } = useWeekendStore()
+  const { isLongWeekendMode } = useWeekendStore()
   const [selectedTimeRange, setSelectedTimeRange] = useState<'all' | 'morning' | 'afternoon' | 'evening' | 'night'>('all')
 
   const filteredTimeSlots = selectedTimeRange === 'all' 
@@ -313,15 +320,12 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
     return scheduledActivities.filter(a => a.day === day && !a.isBlocked).length
   }
 
-  // ✅ Use long weekend mode to determine which days to show
-  const availableDays = getAvailableDays()
-  const activeDays = isLongWeekendMode 
-    ? availableDays.filter(day => ['saturday', 'sunday', 'friday', 'monday'].includes(day)) as ('saturday' | 'sunday' | 'friday' | 'monday')[]
-    : ['saturday', 'sunday'] as ('saturday' | 'sunday')[]
+  // ✅ Use selectedDays prop to determine which days to show
+  const activeDays = selectedDays.length > 0 ? selectedDays : ['saturday', 'sunday'] as ('saturday' | 'sunday')[]
 
   console.log('🔍 Timeline Days DEBUG:', { 
     isLongWeekendMode, 
-    availableDays, 
+    selectedDays, 
     activeDays,
     source: 'EnhancedWeekendTimeline'
   })
@@ -372,7 +376,13 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
               }}
             >
               <WeatherAnimation 
-                weather={getWeatherForTimeSlot('12:00', day, day === 'saturday' ? selectedWeekend?.saturday : selectedWeekend?.sunday)} 
+                weather={getWeatherForTimeSlot('12:00', day, 
+                  day === 'saturday' ? selectedWeekend?.saturday :
+                  day === 'sunday' ? selectedWeekend?.sunday :
+                  day === 'friday' ? (longWeekendDates?.friday || selectedWeekend?.saturday) :
+                  day === 'monday' ? (longWeekendDates?.monday || selectedWeekend?.sunday) :
+                  selectedWeekend?.saturday
+                )} 
                 timeSlot="12:00"
                 className="opacity-30" 
               />
@@ -400,7 +410,12 @@ const EnhancedWeekendTimeline: React.FC<EnhancedWeekendTimelineProps> = ({
               <div className="ml-auto flex items-center gap-2 relative z-10">
                 <span className="text-sm font-medium transition-colors duration-300" style={{ color: currentTheme.colors.textSecondary }}>
                   {(() => {
-                    const currentDate = day === 'saturday' ? selectedWeekend?.saturday : selectedWeekend?.sunday;
+                    const currentDate = 
+                      day === 'saturday' ? selectedWeekend?.saturday :
+                      day === 'sunday' ? selectedWeekend?.sunday :
+                      day === 'friday' ? (longWeekendDates?.friday || selectedWeekend?.saturday) :
+                      day === 'monday' ? (longWeekendDates?.monday || selectedWeekend?.sunday) :
+                      selectedWeekend?.saturday;
                     const weather = getWeatherForTimeSlot('12:00', day, currentDate);
                     return (
                       <>

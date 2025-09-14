@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { Calendar, Coffee, Sun, Sunset, Moon, Plus, X } from 'lucide-react'
 import { useLongWeekendStore } from '../../store/longWeekendStore'
 import FloatingActivityBrowser from './FloatingActivityBrowser'
-import { MockActivityService } from '../../data/mockActivities'
 
 interface LongWeekendTimelineProps {
   longWeekendDates: {

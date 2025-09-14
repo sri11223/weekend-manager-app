@@ -6,7 +6,7 @@
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     /* Remove hardcoded background - let theme system control it */
-    padding-top: 80px; /* Adjust based on your header height */
+    padding-top: 1px; /* Adjust based on your header height */
     padding-bottom: 80px; /* Add bottom padding too */
   }
   
