@@ -332,8 +332,8 @@ export const SimpleMinimalLayout: React.FC = () => {
     isLongWeekendMode
   } = useWeekendStore()
 
-  // Memoize scheduled activities to prevent unnecessary re-renders
-  const scheduledActivities = useMemo(() => getCurrentWeekendActivities(), [getCurrentWeekendActivities])
+  // Get scheduled activities directly - let Zustand handle optimizations
+  const scheduledActivities = getCurrentWeekendActivities()
 
   // Extended addActivity that handles both regular weekends and long weekends
   const addActivity = useCallback((activity: any, timeSlot: string, day: 'saturday' | 'sunday' | 'friday' | 'monday') => {
@@ -356,14 +356,13 @@ export const SimpleMinimalLayout: React.FC = () => {
   // Performance testing (debug mode)
   const [showPerformanceTest, setShowPerformanceTest] = useState(false)
 
-  // Reset long weekend mode on component mount to ensure clean state
+  // Reset long weekend mode on component mount to ensure clean state (run only once)
   React.useEffect(() => {
-    // Only reset if not already in the middle of long weekend planning
     if (isLongWeekendMode && !showLongWeekendTimeline) {
       console.log('🔄 Resetting long weekend mode on component mount')
       setLongWeekendMode(false)
     }
-  }, [isLongWeekendMode, showLongWeekendTimeline, setLongWeekendMode]) // Dependencies for proper effect management
+  }, []) // Empty dependency array - run only on mount
 
   const handleLongWeekendClick = useCallback((holidays: Array<{date: string; localName: string; name: string; countryCode: string}>) => {
     console.log('🎉 Long weekend clicked!', holidays)
@@ -405,46 +404,20 @@ export const SimpleMinimalLayout: React.FC = () => {
     }
   }, [selectedWeekend, setCurrentWeekend])
 
-  // ✅ Force component to update when localStorage theme changes
-  React.useEffect(() => {
-    const checkThemeChange = () => {
-      const storageTheme = localStorage.getItem('weekendly-theme')
-      if (storageTheme !== themeId) {
-        console.log('🚨 THEME MISMATCH! Storage:', storageTheme, 'Hook:', themeId)
-        // Instead of page reload, let's try to force re-mount this component
-                window.location.reload()
-      }
-    }
-    
-    const interval = setInterval(checkThemeChange, 500)
-    return () => clearInterval(interval)
-  }, [themeId])
-
   // ✅ DEBUG: Log when component renders (reduced logging)
   console.log('🔥 SimpleMinimalLayout:', currentTheme?.name || 'undefined', 'ID:', themeId)
 
-  // ✅ FORCE RE-RENDER on theme change
-  const [renderKey, setRenderKey] = useState(0)
-  
-  // ✅ Simple theme change detection without excessive polling
+  // ✅ Apply theme styles only when theme actually changes  
   React.useEffect(() => {
-    console.log('� SIMPLE render for theme:', themeId, currentTheme?.name)
-    setRenderKey(prev => prev + 1)
-    
-    // ✅ FORCE DOM update by directly manipulating styles (ONCE per theme change)
     if (currentTheme?.colors) {
       document.documentElement.style.setProperty('--theme-background', currentTheme.colors.background)
       document.documentElement.style.setProperty('--theme-surface', currentTheme.colors.surface)
       document.documentElement.style.setProperty('--theme-primary', currentTheme.colors.primary)
       document.documentElement.style.setProperty('--theme-text', currentTheme.colors.text)
-      
-      // ✅ FORCE body background directly
       document.body.style.backgroundColor = currentTheme.colors.background
-      document.body.style.background = currentTheme.colors.background
-      
-      console.log('✅ Applied theme:', themeId, 'Background:', currentTheme.colors.background)
+      console.log('✅ Applied theme:', themeId)
     }
-  }, [themeId]) // ✅ ONLY depend on themeId, not currentTheme to avoid loops
+  }, [themeId, currentTheme?.colors?.background]) // Only re-run when theme ID or background actually changes
 
   // Get theme name
   const themeDisplayName = useMemo(() => {
@@ -507,7 +480,7 @@ export const SimpleMinimalLayout: React.FC = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div 
-        key={`simple-layout-${themeId}-${renderKey}`}
+        key={`simple-layout-${themeId}`}
         style={dynamicStyles.container}
       >
         {/* HEADER */}
