@@ -4,15 +4,13 @@ const STATIC_CACHE = 'weekendly-static-v1'
 const DYNAMIC_CACHE = 'weekendly-dynamic-v1'
 const API_CACHE = 'weekendly-api-v1'
 
-// Assets to cache immediately (App Shell)
+// Assets to cache immediately (App Shell) - Use relative paths for Vite
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
   '/manifest.json',
-  '/favicon.ico',
-  // Add other critical assets
+  '/vite.svg',
+  // Will be populated with actual Vite asset paths dynamically
 ]
 
 // API endpoints to cache
@@ -29,16 +27,28 @@ self.addEventListener('install', (event) => {
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
-      .then((cache) => {
+      .then(async (cache) => {
         console.log('📦 Caching static assets')
-        return cache.addAll(STATIC_ASSETS)
-      })
-      .then(() => {
-        console.log('✅ Static assets cached successfully')
+        
+        // Cache assets one by one to handle failures gracefully
+        const cachePromises = STATIC_ASSETS.map(async (asset) => {
+          try {
+            console.log('📦 Caching:', asset)
+            await cache.add(asset)
+            console.log('✅ Cached:', asset)
+          } catch (error) {
+            console.warn('⚠️ Failed to cache asset:', asset, error.message)
+          }
+        })
+        
+        await Promise.all(cachePromises)
+        console.log('✅ Static asset caching completed')
         return self.skipWaiting()
       })
       .catch((error) => {
-        console.error('❌ Failed to cache static assets:', error)
+        console.error('❌ Failed to open cache:', error)
+        // Still skip waiting even if caching fails
+        return self.skipWaiting()
       })
   )
 })
@@ -71,22 +81,43 @@ self.addEventListener('activate', (event) => {
 // Fetch event - Implement caching strategies
 self.addEventListener('fetch', (event) => {
   const { request } = event
-  const url = new URL(request.url)
-
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
+  
+  try {
+    const url = new URL(request.url)
+    
+    // Skip non-GET requests
+    if (request.method !== 'GET') {
+      return
+    }
+    
+    // Skip unsupported schemes (chrome-extension, moz-extension, etc.)
+    if (!url.protocol.startsWith('http')) {
+      console.log('⚠️ Skipping unsupported scheme:', url.protocol)
+      return
+    }
+    
+    // Skip Chrome extension and browser extension requests
+    if (url.hostname.includes('extension') || 
+        url.pathname.includes('extension') ||
+        request.url.includes('chrome-extension') ||
+        request.url.includes('moz-extension')) {
+      console.log('⚠️ Skipping extension request:', request.url)
+      return
+    }
+    
+    // Handle different types of requests with appropriate strategies
+    if (isStaticAsset(request)) {
+      event.respondWith(cacheFirst(request, STATIC_CACHE))
+    } else if (isAPIRequest(request)) {
+      event.respondWith(networkFirstWithFallback(request, API_CACHE))
+    } else if (isImageRequest(request)) {
+      event.respondWith(cacheFirst(request, DYNAMIC_CACHE))
+    } else {
+      event.respondWith(staleWhileRevalidate(request, DYNAMIC_CACHE))
+    }
+  } catch (error) {
+    console.log('⚠️ Skipping invalid URL:', request.url, error)
     return
-  }
-
-  // Handle different types of requests with appropriate strategies
-  if (isStaticAsset(request)) {
-    event.respondWith(cacheFirst(request, STATIC_CACHE))
-  } else if (isAPIRequest(request)) {
-    event.respondWith(networkFirstWithFallback(request, API_CACHE))
-  } else if (isImageRequest(request)) {
-    event.respondWith(cacheFirst(request, DYNAMIC_CACHE))
-  } else {
-    event.respondWith(staleWhileRevalidate(request, DYNAMIC_CACHE))
   }
 })
 
@@ -130,24 +161,52 @@ self.addEventListener('notificationclick', (event) => {
 
 // Caching Strategies
 
-// Cache First - Good for static assets
+// Cache first strategy - Try cache first, then network
 async function cacheFirst(request, cacheName) {
   try {
+    // Check if request is cacheable
+    const url = new URL(request.url)
+    if (!url.protocol.startsWith('http')) {
+      console.log('⚠️ Skipping non-HTTP request in cache:', request.url)
+      return fetch(request)
+    }
+    
     const cache = await caches.open(cacheName)
     const cachedResponse = await cache.match(request)
     
     if (cachedResponse) {
+      console.log('📦 Cache hit:', request.url)
       return cachedResponse
     }
     
+    console.log('🌐 Fetching from network:', request.url)
     const networkResponse = await fetch(request)
-    if (networkResponse.ok) {
+    
+    if (networkResponse.ok && networkResponse.status < 400) {
+      console.log('💾 Caching response:', request.url)
       cache.put(request, networkResponse.clone())
     }
     return networkResponse
   } catch (error) {
-    console.error('Cache first strategy failed:', error)
-    return new Response('Offline - Resource not available', { status: 503 })
+    console.error('❌ Cache first strategy failed for:', request.url, error)
+    // Try to return from cache if network fails
+    try {
+      const cache = await caches.open(cacheName)
+      const cachedResponse = await cache.match(request)
+      if (cachedResponse) {
+        console.log('📦 Returning cached fallback:', request.url)
+        return cachedResponse
+      }
+    } catch (cacheError) {
+      console.error('❌ Cache fallback also failed:', cacheError)
+    }
+    
+    // Return a proper offline response
+    return new Response('Offline - Resource not available', { 
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'text/plain' }
+    })
   }
 }
 
@@ -180,17 +239,33 @@ async function networkFirstWithFallback(request, cacheName) {
 
 // Stale While Revalidate - Good for dynamic content
 async function staleWhileRevalidate(request, cacheName) {
-  const cache = await caches.open(cacheName)
-  const cachedResponse = await cache.match(request)
-  
-  const fetchPromise = fetch(request).then((networkResponse) => {
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone())
+  try {
+    // Validate URL scheme
+    const url = new URL(request.url)
+    if (!url.protocol.startsWith('http')) {
+      console.log('⚠️ Skipping non-HTTP request in staleWhileRevalidate:', request.url)
+      return fetch(request)
     }
-    return networkResponse
-  }).catch(() => cachedResponse)
-  
-  return cachedResponse || fetchPromise
+    
+    const cache = await caches.open(cacheName)
+    const cachedResponse = await cache.match(request)
+    
+    const fetchPromise = fetch(request).then((networkResponse) => {
+      if (networkResponse.ok && networkResponse.status < 400) {
+        cache.put(request, networkResponse.clone())
+      }
+      return networkResponse
+    }).catch((error) => {
+      console.log('⚠️ Network fetch failed for:', request.url, error.message)
+      return cachedResponse
+    })
+    
+    return cachedResponse || fetchPromise
+  } catch (error) {
+    console.error('❌ staleWhileRevalidate failed for:', request.url, error)
+    // Fallback to direct fetch
+    return fetch(request)
+  }
 }
 
 // Helper Functions
